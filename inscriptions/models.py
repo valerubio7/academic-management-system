@@ -9,7 +9,7 @@ class SubjectInscription(models.Model):
     inscription_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.student.username} - {self.subject.name} ({self.inscription_date})"
+        return f"{self.student.user.username} - {self.subject.name} ({self.inscription_date})"
 
 
 class FinalExamInscription(models.Model):
@@ -19,4 +19,4 @@ class FinalExamInscription(models.Model):
     inscription_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.student.username} - {self.final_exam.subject.name} ({self.inscription_date})"
+        return f"{self.student.user.username} - {self.final_exam.subject.name} ({self.inscription_date})"
