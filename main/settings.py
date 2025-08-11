@@ -20,7 +20,8 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Add the parent directory to the Python path
+# Media files configuration
+MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Quick-start development settings - unsuitable for production
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'academics.apps.AcademicsConfig',
     'inscriptions.apps.InscriptionsConfig',
+    'accounts.apps.AccountsConfig',
 ]
 
 MIDDLEWARE = [
