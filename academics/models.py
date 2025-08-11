@@ -1,7 +1,6 @@
 from django.db import models
 
 
-# Create your models here.
 class Faculty(models.Model):
     """Model representing a faculty."""
     name = models.CharField(max_length=100)
@@ -89,7 +88,7 @@ class Grade(models.Model):
         unique_together = ('student', 'subject')
 
     def __str__(self):
-        return f"{self.student.name} - {self.subject.name} ({self.status})"
+        return f"{self.student.user.username} - {self.subject.name} ({self.status})"
 
     def update_status(self):
         """Update the status of the subject based on the final grade."""
