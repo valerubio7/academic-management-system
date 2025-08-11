@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+  <div class="p-4 p-md-5 mb-4 bg-body-secondary rounded">
+    <div class="container">
+      <h1 class="display-6">Bienvenido</h1>
+      {% if user.is_authenticated %}
+        <p class="lead">Has iniciado sesión como <strong>{{ user.username }}</strong>.</p>
+        <a class="btn btn-outline-danger" href="{% url 'logout' %}">Cerrar sesión</a>
+      {% else %}
+        <p class="lead">Para continuar, inicia sesión o crea tu cuenta.</p>
+        <a class="btn btn-primary me-2" href="{% url 'login' %}">Login</a>
+        <a class="btn btn-outline-primary" href="{% url 'signup' %}">Sign up</a>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
