@@ -1,44 +1,39 @@
 from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import redirect, render
-from django.urls import reverse
 
-from .forms import LoginForm, SignupForm
+from .forms import LoginForm
 
 
 def user_login(request):
-    FALLBACK_REDIRECT = reverse('home')  # Cambia 'home' por tu vista principal
+    """Authenticate and redirect to role-based dashboard."""
+    def redirect_by_role(user):
+        if user.role == 'student':
+            return redirect('users:student-dashboard')
+        if user.role == 'professor':
+            return redirect('users:professor-dashboard')
+        if user.role == 'administrator':
+            return redirect('users:admin-dashboard')
+        return redirect('home')
 
     if request.user.is_authenticated:
-        return redirect(FALLBACK_REDIRECT)
+        return redirect_by_role(request.user)
 
     if request.method == 'POST':
         if (form := LoginForm(request.POST)).is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            if user:
+
+            if user := authenticate(request, username=username, password=password):
                 login(request, user)
-                return redirect(request.GET.get('next', FALLBACK_REDIRECT))
-            else:
-                form.add_error(None, 'Incorrect username or password.')
+                next_url = request.GET.get('next')
+                return redirect(next_url) if next_url else redirect_by_role(user)
+            form.add_error(None, 'Incorrect username or password.')
     else:
         form = LoginForm()
 
-    return render(request, 'accounts/login.html', dict(form=form))
+    return render(request, 'accounts/login.html', {"form": form})
 
 
 def user_logout(request):
     logout(request)
-    return redirect('home')  # Cambia 'home' por tu vista principal
-
-
-def user_signup(request):
-    if request.method == 'POST':
-        if (form := SignupForm(request.POST)).is_valid():
-            user = form.save()
-            login(request, user)  # Opcional: inicia sesión tras registrarse
-            return redirect('home')  # Cambia 'home' por tu vista principal
-    else:
-        form = SignupForm()
-
-    return render(request, 'accounts/signup.html', dict(form=form))
+    return redirect('home')
