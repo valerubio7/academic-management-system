@@ -11,12 +11,20 @@ class SubjectInscription(models.Model):
     def __str__(self):
         return f"{self.student.user.username} - {self.subject.name} ({self.inscription_date})"
 
+    class Meta:
+        unique_together = ('student', 'subject')
+
 
 class FinalExamInscription(models.Model):
     """Model representing a final exam inscription."""
     student = models.ForeignKey('users.Student', on_delete=models.CASCADE, related_name='final_exam_inscriptions')
-    final_exam = models.ForeignKey('academics.FinalExam', on_delete=models.CASCADE, related_name='final_exam_inscriptions')
+    final_exam = models.ForeignKey(
+        'academics.FinalExam', on_delete=models.CASCADE, related_name='final_exam_inscriptions'
+    )
     inscription_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.student.user.username} - {self.final_exam.subject.name} ({self.inscription_date})"
+
+    class Meta:
+        unique_together = ('student', 'final_exam')
