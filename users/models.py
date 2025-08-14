@@ -23,17 +23,6 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"{self.get_full_name()}"
 
-    @property
-    def profile(self):
-        """Get the specific profile based on role."""
-        if self.role == self.Role.STUDENT:
-            return getattr(self, 'student', None)
-        elif self.role == self.Role.PROFESSOR:
-            return getattr(self, 'professor', None)
-        elif self.role == self.Role.ADMIN:
-            return getattr(self, 'administrator', None)
-        return None
-
 
 class Student(models.Model):
     """Specific profile for students"""

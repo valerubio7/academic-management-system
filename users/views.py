@@ -1,3 +1,397 @@
-from django.shortcuts import render
+from django.contrib.auth.decorators import user_passes_test, login_required
+from django.shortcuts import render, get_object_or_404, redirect
+from django.contrib import messages
+from users.models import CustomUser, Student, Administrator, Professor
+from inscriptions.models import SubjectInscription, FinalExamInscription
+from academics.models import Career, Subject, FinalExam, Grade, Faculty
+from users.forms import UserBaseForm, StudentProfileForm, ProfessorProfileForm, AdministratorProfileForm
+from academics.forms import CareerForm, SubjectForm, FinalExamForm, GradeForm, FacultyForm
+from django.db import transaction
 
-# Create your views here.
+
+# -------Student Views-------
+def is_student(user):
+    return user.is_authenticated and user.role == CustomUser.Role.STUDENT
+
+
+@login_required
+@user_passes_test(is_student)
+def student_dashboard(request):
+    """Display student dashboard with subjects, inscriptions, grades, and eligible finals."""
+    student = getattr(request.user, 'student', None)
+    if not student:
+        messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
+        return redirect('home')
+    subjects = Subject.objects.filter(career=student.career)
+    inscriptions = SubjectInscription.objects.filter(student=student).select_related('subject')
+    grades = Grade.objects.filter(student=student).select_related('subject')
+
+    # Eligible finals: subjects where grade status is regular
+    eligible_subject_ids = grades.filter(
+        status=Grade.StatusSubject.REGULAR
+    ).values_list('subject_id', flat=True).distinct()
+    eligible_finals = FinalExam.objects.filter(subject_id__in=eligible_subject_ids)
+
+    return render(request, "users/student_dashboard.html", {
+        "subjects": subjects,
+        "inscriptions": inscriptions,
+        "grades": grades,
+        "eligible_finals": eligible_finals,
+    })
+
+
+@login_required
+@user_passes_test(is_student)
+def subject_inscribe(request, subject_code):
+    student = request.user.student
+    subject = get_object_or_404(Subject, code=subject_code, career=student.career)
+    if request.method == "POST":
+        SubjectInscription.objects.get_or_create(student=student, subject=subject)
+        messages.success(request, "Inscripción a la materia realizada.")
+        return redirect("users:student-dashboard")
+    return render(request, "users/subject_inscribe_confirm.html", {"subject": subject})
+
+
+@login_required
+@user_passes_test(is_student)
+def final_exam_inscribe(request, final_exam_id):
+    student = request.user.student
+    final_exam = get_object_or_404(FinalExam, pk=final_exam_id, subject__career=student.career)
+    grade = Grade.objects.filter(student=student, subject=final_exam.subject).order_by('-id').first()
+    if not grade or grade.status not in [Grade.StatusSubject.REGULAR]:
+        messages.error(request, "Solo puedes inscribirte si la materia está regular.")
+        return redirect("users:student-dashboard")
+    if request.method == "POST":
+        FinalExamInscription.objects.get_or_create(student=student, final_exam=final_exam)
+        messages.success(request, "Inscripción al final realizada.")
+        return redirect("users:student-dashboard")
+    return render(request, "users/final_exam_inscribe_confirm.html", {"final_exam": final_exam})
+
+
+# -------Professor Views-------
+def is_professor(user):
+    return user.is_authenticated and user.role == CustomUser.Role.PROFESSOR
+
+
+@login_required
+@user_passes_test(is_professor)
+def professor_dashboard(request):
+    professor = getattr(request.user, 'professor', None)
+    if not professor:
+        messages.error(request, "Tu perfil de profesor no está configurado. Contactá a un administrador.")
+        return redirect('home')
+    subjects = professor.subjects.all()
+    finals = professor.final_exams.all()
+    return render(request, "users/professor_dashboard.html", {"subjects": subjects, "finals": finals})
+
+
+@login_required
+@user_passes_test(is_professor)
+def grade_list(request, subject_code):
+    professor = request.user.professor
+    subject = get_object_or_404(Subject, code=subject_code, professors=professor)
+    grades = Grade.objects.filter(subject=subject).select_related('student__user')
+    return render(request, "users/grade_list.html", {"grades": grades, "subject": subject})
+
+
+@login_required
+@user_passes_test(is_professor)
+def grade_edit(request, pk):
+    grade = get_object_or_404(Grade, pk=pk)
+    if grade.subject not in request.user.professor.subjects.all():
+        messages.error(request, "No puede editar notas de materias no asignadas.")
+        return redirect('users:professor-dashboard')
+    if not SubjectInscription.objects.filter(student=grade.student, subject=grade.subject).exists():
+        messages.error(request, "Solo puede calificar a estudiantes inscriptos en la materia.")
+        return redirect('users:grade-list', subject_code=grade.subject.code)
+
+    if request.method == "POST":
+        form = GradeForm(request.POST, instance=grade)
+        if form.is_valid():
+            saved = form.save()
+            saved.update_status()
+            return redirect("users:grade-list", subject_code=grade.subject.code)
+    else:
+        form = GradeForm(instance=grade)
+    return render(request, "users/grade_form.html", {"form": form, "grade": grade})
+
+
+@login_required
+@user_passes_test(is_professor)
+def professor_final_inscriptions(request, final_exam_id):
+    professor = request.user.professor
+    final_exam = get_object_or_404(FinalExam, id=final_exam_id, professors=professor)
+    inscriptions = FinalExamInscription.objects.filter(final_exam=final_exam).select_related('student__user')
+    return render(request, "users/professor_final_inscriptions.html", {"final_exam": final_exam, "inscriptions": inscriptions})
+
+
+# ---------Admin Views-------
+def is_admin(user):
+    return user.is_authenticated and user.role == CustomUser.Role.ADMIN
+
+
+@user_passes_test(is_admin)
+def admin_dashboard(request):
+    return render(request, "users/admin_dashboard.html")
+
+
+@user_passes_test(is_admin)
+def user_list(request):
+    users = CustomUser.objects.all()
+    return render(request, "users/user_list.html", {"users": users})
+
+
+@user_passes_test(is_admin)
+def user_create(request):
+    profile_form = None
+    if request.method == "POST":
+        user_form = UserBaseForm(request.POST)
+        role = request.POST.get('role')
+        if role == CustomUser.Role.STUDENT:
+            profile_form = StudentProfileForm(request.POST)
+        elif role == CustomUser.Role.PROFESSOR:
+            profile_form = ProfessorProfileForm(request.POST)
+        elif role == CustomUser.Role.ADMIN:
+            profile_form = AdministratorProfileForm(request.POST)
+
+        if user_form.is_valid() and (profile_form is None or profile_form.is_valid()):
+            user = user_form.save()
+            if profile_form is not None:
+                profile = profile_form.save(commit=False)
+                profile.user = user
+                profile.save()
+            return redirect("users:user-list")
+    else:
+        user_form = UserBaseForm()
+    return render(request, "users/user_form.html", {"user_form": user_form, "profile_form": profile_form})
+
+
+@user_passes_test(is_admin)
+def user_edit(request, pk):
+    user = get_object_or_404(CustomUser, pk=pk)
+    profile_form = None
+    if request.method == "POST":
+        user_form = UserBaseForm(request.POST, instance=user)
+        if user_form.is_valid():
+            role = user_form.cleaned_data['role']
+            if role == CustomUser.Role.STUDENT:
+                profile_form = StudentProfileForm(request.POST, instance=getattr(user, 'student', None))
+            elif role == CustomUser.Role.PROFESSOR:
+                profile_form = ProfessorProfileForm(request.POST, instance=getattr(user, 'professor', None))
+            elif role == CustomUser.Role.ADMIN:
+                profile_form = AdministratorProfileForm(request.POST, instance=getattr(user, 'administrator', None))
+
+            if profile_form is None or profile_form.is_valid():
+                with transaction.atomic():
+                    user = user_form.save()
+                    if role != CustomUser.Role.STUDENT and getattr(user, 'student', None):
+                        user.student.delete()
+                    if role != CustomUser.Role.PROFESSOR and getattr(user, 'professor', None):
+                        user.professor.delete()
+                    if role != CustomUser.Role.ADMIN and getattr(user, 'administrator', None):
+                        user.administrator.delete()
+                    if profile_form is not None:
+                        profile = profile_form.save(commit=False)
+                        profile.user = user
+                        profile.save()
+                return redirect("users:user-list")
+    else:
+        user_form = UserBaseForm(instance=user)
+        if user.role == CustomUser.Role.STUDENT:
+            profile_form = StudentProfileForm(instance=getattr(user, 'student', None))
+        elif user.role == CustomUser.Role.PROFESSOR:
+            profile_form = ProfessorProfileForm(instance=getattr(user, 'professor', None))
+        elif user.role == CustomUser.Role.ADMIN:
+            profile_form = AdministratorProfileForm(instance=getattr(user, 'administrator', None))
+    return render(request, "users/user_form.html", {"user_form": user_form, "profile_form": profile_form})
+
+
+@user_passes_test(is_admin)
+def user_delete(request, pk):
+    user = get_object_or_404(CustomUser, pk=pk)
+    if request.method == "POST":
+        user.delete()
+        return redirect("users:user-list")
+    return render(request, "users/user_confirm_delete.html", {"user": user})
+
+
+@user_passes_test(is_admin)
+def faculty_list(request):
+    faculties = Faculty.objects.all()
+    return render(request, "users/faculty_list.html", {"faculties": faculties})
+
+
+@user_passes_test(is_admin)
+def faculty_create(request):
+    if request.method == "POST":
+        form = FacultyForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("users:faculty-list")
+    else:
+        form = FacultyForm()
+    return render(request, "users/faculty_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def faculty_edit(request, code):
+    faculty = get_object_or_404(Faculty, code=code)
+    if request.method == "POST":
+        form = FacultyForm(request.POST, instance=faculty)
+        if form.is_valid():
+            form.save()
+            return redirect("users:faculty-list")
+    else:
+        form = FacultyForm(instance=faculty)
+    return render(request, "users/faculty_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def faculty_delete(request, code):
+    faculty = get_object_or_404(Faculty, code=code)
+    if request.method == "POST":
+        faculty.delete()
+        return redirect("users:faculty-list")
+    return render(request, "users/generic_confirm_delete.html", {"object": faculty, "back": "users:faculty-list"})
+
+
+@user_passes_test(is_admin)
+def career_list(request):
+    careers = Career.objects.all()
+    return render(request, "users/career_list.html", {"careers": careers})
+
+
+@user_passes_test(is_admin)
+def career_create(request):
+    if request.method == "POST":
+        form = CareerForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("users:career-list")
+    else:
+        form = CareerForm()
+    return render(request, "users/career_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def career_edit(request, code):
+    career = get_object_or_404(Career, code=code)
+    if request.method == "POST":
+        form = CareerForm(request.POST, instance=career)
+        if form.is_valid():
+            form.save()
+            return redirect("users:career-list")
+    else:
+        form = CareerForm(instance=career)
+    return render(request, "users/career_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def career_delete(request, code):
+    career = get_object_or_404(Career, code=code)
+    if request.method == "POST":
+        career.delete()
+        return redirect("users:career-list")
+    return render(request, "users/generic_confirm_delete.html", {"object": career, "back": "users:career-list"})
+
+
+@user_passes_test(is_admin)
+def subject_list(request):
+    subjects = Subject.objects.select_related('career').all()
+    return render(request, "users/subject_list.html", {"subjects": subjects})
+
+
+@user_passes_test(is_admin)
+def subject_create(request):
+    if request.method == "POST":
+        form = SubjectForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("users:subject-list")
+    else:
+        form = SubjectForm()
+    return render(request, "users/subject_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def subject_edit(request, code):
+    subject = get_object_or_404(Subject, code=code)
+    if request.method == "POST":
+        form = SubjectForm(request.POST, instance=subject)
+        if form.is_valid():
+            form.save()
+            return redirect("users:subject-list")
+    else:
+        form = SubjectForm(instance=subject)
+    return render(request, "users/subject_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def subject_delete(request, code):
+    subject = get_object_or_404(Subject, code=code)
+    if request.method == "POST":
+        subject.delete()
+        return redirect("users:subject-list")
+    return render(request, "users/generic_confirm_delete.html", {"object": subject, "back": "users:subject-list"})
+
+
+@user_passes_test(is_admin)
+def final_list(request):
+    finals = FinalExam.objects.select_related('subject').all()
+    return render(request, "users/final_list.html", {"finals": finals})
+
+
+@user_passes_test(is_admin)
+def final_create(request):
+    if request.method == "POST":
+        form = FinalExamForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect("users:final-list")
+    else:
+        form = FinalExamForm()
+    return render(request, "users/final_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def final_edit(request, pk):
+    final = get_object_or_404(FinalExam, pk=pk)
+    if request.method == "POST":
+        form = FinalExamForm(request.POST, instance=final)
+        if form.is_valid():
+            form.save()
+            return redirect("users:final-list")
+    else:
+        form = FinalExamForm(instance=final)
+    return render(request, "users/final_form.html", {"form": form})
+
+
+@user_passes_test(is_admin)
+def final_delete(request, pk):
+    final = get_object_or_404(FinalExam, pk=pk)
+    if request.method == "POST":
+        final.delete()
+        return redirect("users:final-list")
+    return render(request, "users/generic_confirm_delete.html", {"object": final, "back": "users:final-list"})
+
+
+@user_passes_test(is_admin)
+def assign_final_professors(request, pk):
+    final = get_object_or_404(FinalExam, pk=pk)
+    if request.method == 'POST':
+        ids = request.POST.getlist('professors')
+        final.professors.set(ids)
+        return redirect('users:final-list')
+    profs = Professor.objects.select_related('user').all()
+    return render(request, 'users/assign_final_professors.html', {"final": final, "professors": profs})
+
+
+@user_passes_test(is_admin)
+def assign_subject_professors(request, code):
+    subject = get_object_or_404(Subject, code=code)
+    if request.method == 'POST':
+        professor_ids = request.POST.getlist('professors')
+        subject.professors.set(professor_ids)
+        return redirect('users:subject-list')
+    profs = Professor.objects.select_related('user').all()
+    return render(request, 'users/assign_subject_professors.html', {"subject": subject, "professors": profs})

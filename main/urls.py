@@ -22,7 +22,10 @@ from django.urls import include
 from django.views.generic import TemplateView
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    # Move Django admin to avoid clashing with custom admin dashboard
+    path('django-admin/', admin.site.urls),
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
     path('', include('accounts.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) # This line serves media files during development
+    # Expose user dashboards at root: /student/... /professor/... /admin/...
+    path('', include('users.urls')),
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  # This line serves media files during development
