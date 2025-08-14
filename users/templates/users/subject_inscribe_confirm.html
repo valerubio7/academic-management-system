@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Confirmar inscripción{% endblock %}
+{% block content %}
+<h1>Confirmar inscripción</h1>
+<p>¿Desea inscribirse a {{ subject.name }}?</p>
+<form method="post">
+  {% csrf_token %}
+  <button class="btn btn-success">Confirmar</button>
+  <a class="btn btn-secondary" href="{% url 'users:student-dashboard' %}">Cancelar</a>
+  </form>
+{% endblock %}

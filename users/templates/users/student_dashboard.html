@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Panel Estudiante{% endblock %}
+{% block content %}
+<h1>Panel de Estudiante</h1>
+
+
+<!-- Subjects available -->
+<div class="row">
+  <div class="col-md-6">
+    <h3>Materias de mi carrera</h3>
+    <ul class="list-group">
+      {% for s in subjects %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ s.name }} ({{ s.code }})
+        <form method="post" action="{% url 'users:subject-inscribe' s.code %}">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-success">Inscribirme</button>
+        </form>
+      </li>
+      {% empty %}
+      <li class="list-group-item">Sin materias</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="col-md-6">
+    <h3>Mis inscripciones a materias</h3>
+    <ul class="list-group">
+      {% for ins in inscriptions %}
+      <li class="list-group-item d-flex justify-content-between align-items-center">
+        {{ ins.subject.name }}
+      </li>
+      {% empty %}
+      <li class="list-group-item">Sin inscripciones</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+<hr/>
+<h3>Finales disponibles</h3>
+<ul class="list-group mb-3">
+  {% for fe in eligible_finals %}
+  <li class="list-group-item d-flex justify-content-between align-items-center">
+    {{ fe.subject.name }} - {{ fe.date }} - Llamado {{ fe.call_number }}
+    <form method="post" action="{% url 'users:final-inscribe' fe.id %}">
+      {% csrf_token %}
+      <button class="btn btn-sm btn-success">Inscribirme</button>
+    </form>
+  </li>
+  {% empty %}
+  <li class="list-group-item">No hay finales disponibles.</li>
+  {% endfor %}
+</ul>
+
+<h3>Mis notas</h3>
+<table class="table table-bordered">
+  <thead>
+    <tr>
+      <th>Materia</th><th>Promoción</th><th>Final</th><th>Estado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for g in grades %}
+    <tr>
+      <td>{{ g.subject.name }}</td>
+      <td>{{ g.promotion_grade|default:'-' }}</td>
+      <td>{{ g.final_grade|default:'-' }}</td>
+      <td>{{ g.get_status_display }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">Sin notas</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
