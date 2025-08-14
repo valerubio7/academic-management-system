@@ -1,17 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Inicio{% endblock %}
 {% block content %}
-  <div class="p-4 p-md-5 mb-4 bg-body-secondary rounded">
-    <div class="container">
-      <h1 class="display-6">Bienvenido</h1>
-      {% if user.is_authenticated %}
-        <p class="lead">Has iniciado sesión como <strong>{{ user.username }}</strong>.</p>
-        <a class="btn btn-outline-danger" href="{% url 'logout' %}">Cerrar sesión</a>
-      {% else %}
-        <p class="lead">Para continuar, inicia sesión o crea tu cuenta.</p>
-        <a class="btn btn-primary me-2" href="{% url 'login' %}">Login</a>
-        <a class="btn btn-outline-primary" href="{% url 'signup' %}">Sign up</a>
-      {% endif %}
+  <section class="hero gradient rounded-4 p-4 p-md-5 mb-4 text-white shadow-sm border border-secondary-subtle">
+    <div class="container py-3">
+      <div class="row align-items-center">
+        <div class="col-lg-8">
+          <h1 class="display-5 fw-semibold mb-3">Academic Management System</h1>
+            <a class="btn btn-light btn-lg" href="{% url 'login' %}"><i class="bi bi-box-arrow-in-right me-1"></i> Iniciar sesión</a>
+        </div>
+        <div class="col-lg-4 d-none d-lg-block text-end">
+          <i class="bi bi-mortarboard-fill display-1 opacity-75"></i>
+        </div>
+      </div>
     </div>
-  </div>
+  </section>
 {% endblock %}
