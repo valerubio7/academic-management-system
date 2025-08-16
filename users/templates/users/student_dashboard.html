@@ -11,11 +11,18 @@
     <ul class="list-group">
       {% for s in subjects %}
       <li class="list-group-item d-flex justify-content-between align-items-center">
-        {{ s.name }} ({{ s.code }})
-        <form method="post" action="{% url 'users:subject-inscribe' s.code %}">
-          {% csrf_token %}
-          <button class="btn btn-sm btn-success">Inscribirme</button>
-        </form>
+        <div>
+          <strong>{{ s.name }}</strong> <small class="text-muted">({{ s.code }})</small>
+        </div>
+
+        {% if s.code in inscribed_subject_codes %}
+          <button class="btn btn-sm btn-secondary" disabled>Inscripto</button>
+        {% else %}
+          <form method="post" action="{% url 'users:subject-inscribe' s.code %}">
+            {% csrf_token %}
+            <button class="btn btn-sm btn-success">Inscribirme</button>
+          </form>
+        {% endif %}
       </li>
       {% empty %}
       <li class="list-group-item">Sin materias</li>
@@ -38,15 +45,23 @@
 </div>
 
 <hr/>
+
 <h3>Finales disponibles</h3>
 <ul class="list-group mb-3">
   {% for fe in eligible_finals %}
   <li class="list-group-item d-flex justify-content-between align-items-center">
-    {{ fe.subject.name }} - {{ fe.date }} - Llamado {{ fe.call_number }}
-    <form method="post" action="{% url 'users:final-inscribe' fe.id %}">
-      {% csrf_token %}
-      <button class="btn btn-sm btn-success">Inscribirme</button>
-    </form>
+    <div>
+      {{ fe.subject.name }} - {{ fe.date }} {% if fe.call_number %}- Llamado {{ fe.call_number }}{% endif %}
+    </div>
+
+    {% if fe.id in inscribed_final_ids %}
+      <button class="btn btn-sm btn-secondary" disabled>Inscripto</button>
+    {% else %}
+      <form method="post" action="{% url 'users:final-inscribe' fe.id %}">
+        {% csrf_token %}
+        <button class="btn btn-sm btn-success">Inscribirme</button>
+      </form>
+    {% endif %}
   </li>
   {% empty %}
   <li class="list-group-item">No hay finales disponibles.</li>

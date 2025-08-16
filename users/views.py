@@ -3,7 +3,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db import transaction
 
-from users.models import CustomUser, Professor
+from users.models import CustomUser, Professor, Student
 from inscriptions.models import SubjectInscription, FinalExamInscription
 from academics.models import Career, Subject, FinalExam, Grade, Faculty
 from users.forms import UserForm, StudentProfileForm, ProfessorProfileForm, AdministratorProfileForm
@@ -392,10 +392,10 @@ def student_dashboard(request):
     eligible_finals = FinalExam.objects.filter(subject_id__in=eligible_subject_ids)
 
     return render(request, "users/student_dashboard.html", {
-        "subjects": subjects,
-        "inscriptions": inscriptions,
-        "grades": grades,
-        "eligible_finals": eligible_finals})
+         "subjects": subjects,
+         "inscriptions": inscriptions,
+         "grades": grades,
+         "eligible_finals": eligible_finals})
 
 
 @login_required
@@ -407,7 +407,7 @@ def subject_inscribe(request, subject_code):
         SubjectInscription.objects.get_or_create(student=student, subject=subject)
         messages.success(request, "Inscripción a la materia realizada.")
         return redirect("users:student-dashboard")
-    return render(request, "users/subject_inscribe_confirm.html", {"subject": subject})
+    return render(request, "users/inscribe_confirm.html", {"subject": subject})
 
 
 @login_required
@@ -423,7 +423,7 @@ def final_exam_inscribe(request, final_exam_id):
         FinalExamInscription.objects.get_or_create(student=student, final_exam=final_exam)
         messages.success(request, "Inscripción al final realizada.")
         return redirect("users:student-dashboard")
-    return render(request, "users/final_exam_inscribe_confirm.html", {"final_exam": final_exam})
+    return render(request, "users/inscribe_confirm.html", {"final_exam": final_exam})
 
 
 # -------Professor Views-------
@@ -479,7 +479,8 @@ def grade_edit(request, pk):
 def professor_final_inscriptions(request, final_exam_id):
     professor = request.user.professor
     final_exam = get_object_or_404(FinalExam, id=final_exam_id, professors=professor)
-    inscriptions = FinalExamInscription.objects.filter(final_exam=final_exam).select_related('student__user')
+    inscriptions = FinalExamInscription.objects.filter(final_exam=final_exam).select_related(
+        'student__user')
     return render(
         request,
         "users/professor_final_inscriptions.html",
