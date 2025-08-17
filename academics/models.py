@@ -79,7 +79,7 @@ class Grade(models.Model):
     student = models.ForeignKey('users.Student', on_delete=models.CASCADE, related_name='grades')
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='grades')
     promotion_grade = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    status = models.CharField(max_length=10, choices=StatusSubject.choices, default=StatusSubject.FREE)
+    status = models.CharField(max_length=10, choices=StatusSubject.choices, default=StatusSubject.REGULAR)
     final_grade = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
     last_updated = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True, null=True)
