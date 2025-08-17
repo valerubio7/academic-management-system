@@ -6,6 +6,6 @@
 <form method="post">
   {% csrf_token %}
   <button class="btn btn-success">{{ confirm_text|default:"Confirmar" }}</button>
-  <a class="btn btn-secondary" href="{{ cancel_url|default:('users:student-dashboard') }}">Cancelar</a>
+  <a class="btn btn-secondary" href="{% if cancel_url %}{{ cancel_url }}{% else %}{% url 'users:student-dashboard' %}{% endif %}">Cancelar</a>
 </form>
 {% endblock %}

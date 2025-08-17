@@ -287,7 +287,8 @@ def subject_delete(request, code):
 def assign_subject_professors(request, code):
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
-        selected_ids = set(int(pid) for pid in request.POST.getlist("professors"))
+        # Professor primary key is a string (professor_id), keep as-is
+        selected_ids = set(request.POST.getlist("professors"))
         current_ids = set(subject.professors.values_list("pk", flat=True))
 
         to_add = selected_ids - current_ids
@@ -357,7 +358,8 @@ def final_delete(request, pk):
 def assign_final_professors(request, pk):
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
-        selected_ids = set(int(pid) for pid in request.POST.getlist("professors"))
+        # Professor primary key is a string (professor_id), keep as-is
+        selected_ids = set(request.POST.getlist("professors"))
         current_ids = set(final.professors.values_list("pk", flat=True))
 
         to_add = selected_ids - current_ids
