@@ -1,6 +1,8 @@
 from datetime import date, timedelta
+from unittest.mock import patch
+from tempfile import TemporaryDirectory
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from academics.models import Career, Faculty, FinalExam, Grade, Subject
@@ -401,6 +403,68 @@ class StudentViewsTests(TestCase):
         resp = self.client.post(reverse("users:final-inscribe", args=[final.id]))
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(FinalExamInscription.objects.filter(student=self.student, final_exam=final).exists())
+
+    def test_download_certificate_requires_login_and_student_profile(self):
+        # Unauthenticated -> redirect to login
+        resp = self.client.get(reverse("users:student-regular-certificate"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/login", resp["Location"])  # login redirect
+
+        # Auth student without linked Student profile -> redirect home
+        no_profile_user = CustomUser.objects.create_user(
+            username="stud_noprofile",
+            password="pass1234",
+            role=CustomUser.Role.STUDENT,
+            dni="17777777",
+        )
+        self.client.force_login(no_profile_user)
+        resp = self.client.get(reverse("users:student-regular-certificate"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(resp["Location"], reverse("home"))
+
+    def test_download_certificate_missing_template_redirects(self):
+        # Force login a valid student
+        self.client.force_login(self.student_user)
+
+        # Use a temporary BASE_DIR with no template file
+        with TemporaryDirectory() as tmpdir:
+            with override_settings(BASE_DIR=tmpdir):
+                resp = self.client.get(reverse("users:student-regular-certificate"))
+                self.assertEqual(resp.status_code, 302)
+                self.assertEqual(resp["Location"], reverse("users:student-dashboard"))
+
+    @patch("users.views.DocxTemplate")
+    def test_download_certificate_success_returns_docx(self, mock_tpl_cls):
+        # Mock DocxTemplate to avoid real file IO and docx processing
+        class FakeTpl:
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def render(self, _context):
+                return None
+
+            def save(self, dest):
+                # Write some bytes to the provided BytesIO
+                dest.write(b"PK\x03\x04fake-docx-content")
+
+        mock_tpl_cls.return_value = FakeTpl()
+
+        # Ensure logged in as valid student
+        self.client.force_login(self.student_user)
+        resp = self.client.get(reverse("users:student-regular-certificate"))
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            resp["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        content_disp = resp["Content-Disposition"]
+        ok = (
+            "attachment; filename=\"certificado-regular-" in content_disp
+            or "attachment; filename=\"certificado-regular-stud-" in content_disp
+        )
+        self.assertTrue(ok)
+        self.assertTrue(len(resp.content) > 0)
 
 
 class ProfessorViewsTests(TestCase):

@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.conf import settings
 from io import BytesIO
+from pathlib import Path
 from docxtpl import DocxTemplate
 
 from users.models import CustomUser, Professor
@@ -467,7 +468,7 @@ def download_regular_certificate(request):
         messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
         return redirect("home")
 
-    template_path = settings.BASE_DIR / "regular_certificate.docx"
+    template_path = Path(settings.BASE_DIR) / "regular_certificate.docx"
     if not template_path.exists():
         messages.error(request, "No se encontró la plantilla de certificado.")
         return redirect("users:student-dashboard")
