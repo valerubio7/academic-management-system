@@ -2,6 +2,11 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.db import transaction
+from django.http import HttpResponse
+from django.utils import timezone
+from django.conf import settings
+from io import BytesIO
+from docxtpl import DocxTemplate
 
 from users.models import CustomUser, Professor
 from inscriptions.models import SubjectInscription, FinalExamInscription
@@ -454,6 +459,59 @@ def final_exam_inscribe(request, final_exam_id):
     return render(request, "users/inscribe_confirm.html", {"final_exam": final_exam})
 
 
+@login_required
+@user_passes_test(is_student)
+def download_regular_certificate(request):
+    student = getattr(request.user, "student", None)
+    if not student:
+        messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
+        return redirect("home")
+
+    template_path = settings.BASE_DIR / "regular_certificate.docx"
+    if not template_path.exists():
+        messages.error(request, "No se encontró la plantilla de certificado.")
+        return redirect("users:student-dashboard")
+
+    today = timezone.localdate()
+    context = {
+        "full_name": request.user.get_full_name() or request.user.username,
+        "first_name": request.user.first_name,
+        "last_name": request.user.last_name,
+        "dni": request.user.dni,
+        "student_id": student.student_id,
+        "career_name": student.career.name if student.career else "",
+        "career_code": student.career.code if student.career else "",
+        "faculty_name": (
+            student.career.faculty.name
+            if getattr(student, "career", None) and student.career and student.career.faculty
+            else ""
+        ),
+        "enrollment_date": student.enrollment_date.strftime("%d/%m/%Y") if student.enrollment_date else "",
+        "today_date": today.strftime("%d/%m/%Y"),
+        "today_day": f"{today.day:02d}",
+        "today_month": f"{today.month:02d}",
+        "today_year": f"{today.year}",
+    }
+
+    try:
+        doc = DocxTemplate(str(template_path))
+        doc.render(context)
+        output = BytesIO()
+        doc.save(output)
+        output.seek(0)
+    except Exception:
+        messages.error(request, "Ocurrió un error al generar el certificado.")
+        return redirect("users:student-dashboard")
+
+    filename = f"certificado-regular-{request.user.last_name or request.user.username}-{today.strftime('%Y%m%d')}.docx"
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
+    response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+    return response
+
+
 # -------Professor Views-------
 def is_professor(user):
     return user.is_authenticated and user.role == CustomUser.Role.PROFESSOR
@@ -524,4 +582,8 @@ def professor_final_inscriptions(request, final_exam_id):
         .select_related("student__user")
         .order_by("student__user__last_name", "student__user__first_name")
     )
-    return render(request, "users/professor_final_inscriptions.html", {"final_exam": final_exam, "inscriptions": inscriptions})
+    return render(
+        request,
+        "users/professor_final_inscriptions.html",
+        {"final_exam": final_exam, "inscriptions": inscriptions},
+    )

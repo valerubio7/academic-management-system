@@ -38,10 +38,11 @@ urlpatterns = [
     path('student/dashboard/', views.student_dashboard, name='student-dashboard'),
     path('student/subject/<str:subject_code>/inscribe/', views.subject_inscribe, name='subject-inscribe'),
     path('student/final/<int:final_exam_id>/inscribe/', views.final_exam_inscribe, name='final-inscribe'),
+    path('student/certificate/regular/', views.download_regular_certificate, name='student-regular-certificate'),
 
     # Professor
     path('professor/dashboard/', views.professor_dashboard, name='professor-dashboard'),
     path('professor/grades/<str:subject_code>/', views.grade_list, name='grade-list'),
     path('professor/grade/<int:pk>/edit/', views.grade_edit, name='grade-edit'),
-    path('professor/final/<int:final_exam_id>/inscriptions/', views.professor_final_inscriptions, name='professor-final-inscriptions'),
+    path('professor/final/<int:final_exam_id>/inscriptions/',views.professor_final_inscriptions, name='professor-final-inscriptions')
 ]
