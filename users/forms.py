@@ -1,9 +1,33 @@
+"""Forms for the Users app.
+
+Includes:
+- UserForm: create/update CustomUser with password handling and validation.
+- StudentProfileForm: student profile data linked to a Career.
+- ProfessorProfileForm: professor profile data.
+- AdministratorProfileForm: administrator profile data.
+
+Notes:
+    Labels are in Spanish to match the current UI.
+"""
+
 from django import forms
 from users.models import CustomUser, Student, Professor, Administrator
 from academics.models import Career
 
 
 class UserForm(forms.ModelForm):
+    """
+    Form to create or update a CustomUser with password management.
+
+    Behavior:
+        - On creation, password1 and password2 are required.
+        - On update, passwords are optional; if provided, they must match.
+        - Password is saved hashed via set_password() only when provided.
+
+    Fields:
+        username, first_name, last_name, email, dni, phone, birth_date,
+        address, role, is_active (+ password1/password2 not in Meta).
+    """
     password1 = forms.CharField(label="Contraseña", widget=forms.PasswordInput, strip=False, required=False)
     password2 = forms.CharField(label="Confirmar contraseña", widget=forms.PasswordInput, strip=False, required=False)
 
@@ -12,6 +36,12 @@ class UserForm(forms.ModelForm):
         fields = ['username', 'first_name', 'last_name', 'email', 'dni','phone', 'birth_date', 'address', 'role', 'is_active']
 
     def __init__(self, *args, **kwargs):
+        """
+        Initialize form and toggle password requirements based on instance state.
+
+        If editing an existing user (instance.pk is set), passwords are optional.
+        If creating a new user, passwords are required.
+        """
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.fields['password1'].required = False
@@ -21,6 +51,12 @@ class UserForm(forms.ModelForm):
             self.fields['password2'].required = True
 
     def clean(self):
+        """
+        Validate password fields according to create/update rules.
+
+        - Create: both passwords required and must match.
+        - Update: if either password is provided, both must be present and match.
+        """
         cleaned = super().clean()
         pwd1 = cleaned.get("password1")
         pwd2 = cleaned.get("password2")
@@ -41,6 +77,15 @@ class UserForm(forms.ModelForm):
         return cleaned
 
     def save(self, commit=True):
+        """
+        Persist the user and set a hashed password if provided.
+
+        Args:
+            commit (bool): Whether to save the instance to the DB. Defaults to True.
+
+        Returns:
+            CustomUser: The saved user instance.
+        """
         user = super().save(commit=False)
         pwd = self.cleaned_data.get("password1")
         if pwd:
@@ -51,6 +96,12 @@ class UserForm(forms.ModelForm):
 
 
 class StudentProfileForm(forms.ModelForm):
+    """
+    Form to edit student profile details.
+
+    Fields:
+        student_id, career, enrollment_date.
+    """
     career = forms.ModelChoiceField(queryset=Career.objects.all(), label="Carrera")
 
     class Meta:
@@ -60,6 +111,12 @@ class StudentProfileForm(forms.ModelForm):
 
 
 class ProfessorProfileForm(forms.ModelForm):
+    """
+    Form to edit professor profile details.
+
+    Fields:
+        professor_id, degree, category, hire_date.
+    """
     class Meta:
         model = Professor
         fields = ['professor_id', 'degree', 'category', 'hire_date']
@@ -67,6 +124,12 @@ class ProfessorProfileForm(forms.ModelForm):
 
 
 class AdministratorProfileForm(forms.ModelForm):
+    """
+    Form to edit administrator profile details.
+
+    Fields:
+        administrator_id, position, hire_date.
+    """
     class Meta:
         model = Administrator
         fields = ['administrator_id', 'position', 'hire_date']

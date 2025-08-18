@@ -1,3 +1,15 @@
+"""URL patterns for the Users app.
+
+Sections:
+- Admin: CRUD for users, faculties, careers, subjects, finals, and assignments.
+- Student: dashboard, subject/final inscriptions, certificates.
+- Professor: dashboard, grade management, final inscriptions.
+
+Notes:
+    Namespaced via app_name = "users" to enable reverse('users:<name>').
+    Access control is enforced in views (role-based decorators or checks).
+"""
+
 from django.urls import path
 
 from . import views

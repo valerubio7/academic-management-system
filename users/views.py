@@ -1,35 +1,62 @@
-from django.contrib.auth.decorators import user_passes_test, login_required
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
-from django.db import transaction
-from django.http import HttpResponse
-from django.utils import timezone
-from django.conf import settings
+"""Views for Users app: admin, student, and professor workflows.
+
+Includes:
+- Admin: CRUD for users, faculties, careers, subjects, finals, and assignments.
+- Student: dashboard, subject/final inscriptions, regular certificate.
+- Professor: dashboard, grade management, final inscriptions.
+
+Notes:
+    - Access control via role-based predicates (is_admin/is_student/is_professor).
+    - Uses messages framework for user feedback.
+    - Keeps business rules minimal in views; core rules live in models/services.
+"""
+
 from io import BytesIO
 from pathlib import Path
+
 from docxtpl import DocxTemplate
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.db import transaction
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
+from academics.forms import CareerForm, FacultyForm, FinalExamForm, GradeForm, SubjectForm
+from academics.models import Career, Faculty, FinalExam, Grade, Subject
+from inscriptions.models import FinalExamInscription, SubjectInscription
+from users.forms import AdministratorProfileForm, ProfessorProfileForm, StudentProfileForm, UserForm
 from users.models import CustomUser, Professor
-from inscriptions.models import SubjectInscription, FinalExamInscription
-from academics.models import Career, Subject, FinalExam, Grade, Faculty
-from users.forms import UserForm, StudentProfileForm, ProfessorProfileForm, AdministratorProfileForm
-from academics.forms import CareerForm, SubjectForm, FinalExamForm, GradeForm, FacultyForm
 
 
-# ---------Admin Views-------
+# --------- Admin Views -------
 def is_admin(user):
+    """Return True if the user is authenticated and has administrator role."""
     return user.is_authenticated and user.role == CustomUser.Role.ADMIN
 
 
 @login_required
 @user_passes_test(is_admin)
 def admin_dashboard(request):
+    """
+    Render the admin dashboard.
+
+    Returns:
+        HttpResponse: Admin dashboard page.
+    """
     return render(request, "users/admin_dashboard.html")
 
 
 @login_required
 @user_passes_test(is_admin)
 def user_list(request):
+    """
+    List all users.
+
+    Returns:
+        HttpResponse: Page with user queryset.
+    """
     users = CustomUser.objects.all()
     return render(request, "users/user_list.html", {"users": users})
 
@@ -37,6 +64,17 @@ def user_list(request):
 @login_required
 @user_passes_test(is_admin)
 def user_create(request):
+    """
+    Create a new user and optional role-specific profile.
+
+    Behavior:
+        - Determines selected role from POST.
+        - Validates UserForm and the matching profile form.
+        - Creates both inside an atomic transaction.
+
+    Returns:
+        HttpResponse: Redirect to list on success or form page on error.
+    """
     selected_role = None
     if request.method == "POST":
         user_form = UserForm(request.POST)
@@ -79,6 +117,19 @@ def user_create(request):
 @login_required
 @user_passes_test(is_admin)
 def user_edit(request, pk):
+    """
+    Update a user and its role-specific profile.
+
+    Behavior:
+        - Saves UserForm, swaps/creates/deletes related profile based on chosen role.
+        - All operations are transactional.
+
+    Args:
+        pk (int): User primary key.
+
+    Returns:
+        HttpResponse: Redirect to list on success or form page on error.
+    """
     user = get_object_or_404(CustomUser, pk=pk)
     if request.method == "POST":
         user_form = UserForm(request.POST, instance=user)
@@ -149,6 +200,15 @@ def user_edit(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def user_delete(request, pk):
+    """
+    Delete a user after confirmation.
+
+    Args:
+        pk (int): User primary key.
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     user = get_object_or_404(CustomUser, pk=pk)
     if request.method == "POST":
         user.delete()
@@ -159,6 +219,12 @@ def user_delete(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def faculty_list(request):
+    """
+    List faculties.
+
+    Returns:
+        HttpResponse: Page with faculties queryset.
+    """
     faculties = Faculty.objects.all()
     return render(request, "users/faculty_list.html", {"faculties": faculties})
 
@@ -166,6 +232,12 @@ def faculty_list(request):
 @login_required
 @user_passes_test(is_admin)
 def faculty_create(request):
+    """
+    Create a faculty.
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     if request.method == "POST":
         form = FacultyForm(request.POST)
         if form.is_valid():
@@ -179,6 +251,15 @@ def faculty_create(request):
 @login_required
 @user_passes_test(is_admin)
 def faculty_edit(request, code):
+    """
+    Edit a faculty.
+
+    Args:
+        code (str): Faculty code (PK).
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     faculty = get_object_or_404(Faculty, code=code)
     if request.method == "POST":
         form = FacultyForm(request.POST, instance=faculty)
@@ -193,6 +274,15 @@ def faculty_edit(request, code):
 @login_required
 @user_passes_test(is_admin)
 def faculty_delete(request, code):
+    """
+    Delete a faculty after confirmation.
+
+    Args:
+        code (str): Faculty code (PK).
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     faculty = get_object_or_404(Faculty, code=code)
     if request.method == "POST":
         faculty.delete()
@@ -203,6 +293,12 @@ def faculty_delete(request, code):
 @login_required
 @user_passes_test(is_admin)
 def career_list(request):
+    """
+    List careers.
+
+    Returns:
+        HttpResponse: Page with careers queryset.
+    """
     careers = Career.objects.all()
     return render(request, "users/career_list.html", {"careers": careers})
 
@@ -210,6 +306,12 @@ def career_list(request):
 @login_required
 @user_passes_test(is_admin)
 def career_create(request):
+    """
+    Create a career.
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     if request.method == "POST":
         form = CareerForm(request.POST)
         if form.is_valid():
@@ -223,6 +325,15 @@ def career_create(request):
 @login_required
 @user_passes_test(is_admin)
 def career_edit(request, code):
+    """
+    Edit a career.
+
+    Args:
+        code (str): Career code (PK).
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     career = get_object_or_404(Career, code=code)
     if request.method == "POST":
         form = CareerForm(request.POST, instance=career)
@@ -237,6 +348,15 @@ def career_edit(request, code):
 @login_required
 @user_passes_test(is_admin)
 def career_delete(request, code):
+    """
+    Delete a career after confirmation.
+
+    Args:
+        code (str): Career code (PK).
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     career = get_object_or_404(Career, code=code)
     if request.method == "POST":
         career.delete()
@@ -247,6 +367,12 @@ def career_delete(request, code):
 @login_required
 @user_passes_test(is_admin)
 def subject_list(request):
+    """
+    List subjects.
+
+    Returns:
+        HttpResponse: Page with subjects queryset.
+    """
     subjects = Subject.objects.select_related("career").all()
     return render(request, "users/subject_list.html", {"subjects": subjects})
 
@@ -254,6 +380,12 @@ def subject_list(request):
 @login_required
 @user_passes_test(is_admin)
 def subject_create(request):
+    """
+    Create a subject.
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     if request.method == "POST":
         form = SubjectForm(request.POST)
         if form.is_valid():
@@ -267,6 +399,15 @@ def subject_create(request):
 @login_required
 @user_passes_test(is_admin)
 def subject_edit(request, code):
+    """
+    Edit a subject.
+
+    Args:
+        code (str): Subject code (PK).
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
         form = SubjectForm(request.POST, instance=subject)
@@ -281,6 +422,15 @@ def subject_edit(request, code):
 @login_required
 @user_passes_test(is_admin)
 def subject_delete(request, code):
+    """
+    Delete a subject after confirmation.
+
+    Args:
+        code (str): Subject code (PK).
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
         subject.delete()
@@ -291,6 +441,15 @@ def subject_delete(request, code):
 @login_required
 @user_passes_test(is_admin)
 def assign_subject_professors(request, code):
+    """
+    Assign/remove professors for a subject.
+
+    Args:
+        code (str): Subject code (PK).
+
+    Returns:
+        HttpResponse: Redirect to list after processing or form page (GET).
+    """
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
         # Professor primary key is a string (professor_id), keep as-is
@@ -318,6 +477,12 @@ def assign_subject_professors(request, code):
 @login_required
 @user_passes_test(is_admin)
 def final_list(request):
+    """
+    List final exams.
+
+    Returns:
+        HttpResponse: Page with final exams queryset.
+    """
     finals = FinalExam.objects.select_related("subject").all()
     return render(request, "users/final_list.html", {"finals": finals})
 
@@ -325,6 +490,12 @@ def final_list(request):
 @login_required
 @user_passes_test(is_admin)
 def final_create(request):
+    """
+    Create a final exam.
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     if request.method == "POST":
         form = FinalExamForm(request.POST)
         if form.is_valid():
@@ -338,6 +509,15 @@ def final_create(request):
 @login_required
 @user_passes_test(is_admin)
 def final_edit(request, pk):
+    """
+    Edit a final exam.
+
+    Args:
+        pk (int): FinalExam primary key.
+
+    Returns:
+        HttpResponse: Redirect on success or form page on error.
+    """
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
         form = FinalExamForm(request.POST, instance=final)
@@ -352,6 +532,15 @@ def final_edit(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def final_delete(request, pk):
+    """
+    Delete a final exam after confirmation.
+
+    Args:
+        pk (int): FinalExam primary key.
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
         final.delete()
@@ -362,6 +551,15 @@ def final_delete(request, pk):
 @login_required
 @user_passes_test(is_admin)
 def assign_final_professors(request, pk):
+    """
+    Assign/remove professors for a final exam.
+
+    Args:
+        pk (int): FinalExam primary key.
+
+    Returns:
+        HttpResponse: Redirect to list after processing or form page (GET).
+    """
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
         # Professor primary key is a string (professor_id), keep as-is
@@ -386,14 +584,30 @@ def assign_final_professors(request, pk):
     return render(request, "users/assign_professors.html", {"final": final, "professors": profs})
 
 
-# -------Student Views-------
+# ------- Student Views -------
 def is_student(user):
+    """Return True if the user is authenticated and has student role."""
     return user.is_authenticated and user.role == CustomUser.Role.STUDENT
 
 
 @login_required
 @user_passes_test(is_student)
 def student_dashboard(request):
+    """
+    Render student dashboard with subjects, grades, and inscriptions.
+
+    Context:
+        subjects: Career subjects for the student.
+        inscriptions: Subject inscriptions for the student.
+        grades: Grade queryset for the student.
+        eligible_finals: Finals where status is REGULAR.
+        final_inscriptions: Final exam inscriptions.
+        inscribed_final_ids: IDs of finals already inscribed.
+        inscribed_subject_codes: Codes of subjects already inscribed.
+
+    Returns:
+        HttpResponse: Dashboard page.
+    """
     student = getattr(request.user, "student", None)
     if not student:
         messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
@@ -430,6 +644,15 @@ def student_dashboard(request):
 @login_required
 @user_passes_test(is_student)
 def subject_inscribe(request, subject_code):
+    """
+    Create subject inscription and ensure grade record exists.
+
+    Args:
+        subject_code (str): Subject code (PK).
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     student = request.user.student
     subject = get_object_or_404(Subject, code=subject_code, career=student.career)
     if request.method == "POST":
@@ -447,6 +670,15 @@ def subject_inscribe(request, subject_code):
 @login_required
 @user_passes_test(is_student)
 def final_exam_inscribe(request, final_exam_id):
+    """
+    Create final exam inscription if the subject status is REGULAR.
+
+    Args:
+        final_exam_id (int): FinalExam primary key.
+
+    Returns:
+        HttpResponse: Confirmation page (GET) or redirect (POST).
+    """
     student = request.user.student
     final_exam = get_object_or_404(FinalExam, pk=final_exam_id, subject__career=student.career)
     grade = Grade.objects.filter(student=student, subject=final_exam.subject).order_by("-id").first()
@@ -463,7 +695,17 @@ def final_exam_inscribe(request, final_exam_id):
 @login_required
 @user_passes_test(is_student)
 def download_regular_certificate(request):
-    student = getattr(request.user, "student", None)
+    """
+    Generate and download a 'regular student' certificate as DOCX.
+
+    Behavior:
+        - Loads a DocxTemplate (regular_certificate.docx) from BASE_DIR.
+        - Renders with student/user context and streams as attachment.
+
+    Returns:
+        HttpResponse: DOCX file as application/vnd.openxmlformats-officedocument.wordprocessingml.document.
+    """
+    student = getattr(request, "user", None).student if getattr(request, "user", None) else None
     if not student:
         messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
         return redirect("home")
@@ -513,14 +755,21 @@ def download_regular_certificate(request):
     return response
 
 
-# -------Professor Views-------
+# ------- Professor Views -------
 def is_professor(user):
+    """Return True if the user is authenticated and has professor role."""
     return user.is_authenticated and user.role == CustomUser.Role.PROFESSOR
 
 
 @login_required
 @user_passes_test(is_professor)
 def professor_dashboard(request):
+    """
+    Render professor dashboard with assigned subjects and finals.
+
+    Returns:
+        HttpResponse: Dashboard page.
+    """
     professor = getattr(request.user, "professor", None)
     if not professor:
         messages.error(request, "Tu perfil de profesor no está configurado. Contactá a un administrador.")
@@ -533,6 +782,15 @@ def professor_dashboard(request):
 @login_required
 @user_passes_test(is_professor)
 def grade_list(request, subject_code):
+    """
+    List grades for a subject and backfill missing Grade entries.
+
+    Args:
+        subject_code (str): Subject code (PK) assigned to the professor.
+
+    Returns:
+        HttpResponse: Page with grades queryset.
+    """
     professor = request.user.professor
     subject = get_object_or_404(Subject, code=subject_code, professors=professor)
     enrolled_student_ids = set(SubjectInscription.objects.filter(subject=subject).values_list("student_id", flat=True))
@@ -552,6 +810,19 @@ def grade_list(request, subject_code):
 @login_required
 @user_passes_test(is_professor)
 def grade_edit(request, pk):
+    """
+    Edit a grade record for a student in a professor's subject.
+
+    Guards:
+        - Professor must be assigned to the subject.
+        - Student must be inscribed in the subject.
+
+    Args:
+        pk (int): Grade primary key.
+
+    Returns:
+        HttpResponse: Redirect to grade list on success or form page on error.
+    """
     grade = get_object_or_404(Grade, pk=pk)
     if grade.subject not in request.user.professor.subjects.all():
         messages.error(request, "No puede editar notas de materias no asignadas.")
@@ -576,6 +847,15 @@ def grade_edit(request, pk):
 @login_required
 @user_passes_test(is_professor)
 def professor_final_inscriptions(request, final_exam_id):
+    """
+    List final exam inscriptions assigned to the professor.
+
+    Args:
+        final_exam_id (int): FinalExam primary key.
+
+    Returns:
+        HttpResponse: Page with inscriptions queryset.
+    """
     professor = request.user.professor
     final_exam = get_object_or_404(FinalExam, id=final_exam_id, professors=professor)
     inscriptions = (
@@ -583,8 +863,5 @@ def professor_final_inscriptions(request, final_exam_id):
         .select_related("student__user")
         .order_by("student__user__last_name", "student__user__first_name")
     )
-    return render(
-        request,
-        "users/professor_final_inscriptions.html",
-        {"final_exam": final_exam, "inscriptions": inscriptions},
-    )
+    return render(request, "users/professor_final_inscriptions.html", {
+        "final_exam": final_exam, "inscriptions": inscriptions})
