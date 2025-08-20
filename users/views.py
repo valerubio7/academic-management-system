@@ -27,7 +27,7 @@ from academics.forms import CareerForm, FacultyForm, FinalExamForm, GradeForm, S
 from academics.models import Career, Faculty, FinalExam, Grade, Subject
 from inscriptions.models import FinalExamInscription, SubjectInscription
 from users.forms import AdministratorProfileForm, ProfessorProfileForm, StudentProfileForm, UserForm
-from users.models import CustomUser, Professor
+from users.models import CustomUser, Professor, Student
 
 
 # --------- Admin Views -------
@@ -697,15 +697,10 @@ def final_exam_inscribe(request, final_exam_id):
 def download_regular_certificate(request):
     """
     Generate and download a 'regular student' certificate as DOCX.
-
-    Behavior:
-        - Loads a DocxTemplate (regular_certificate.docx) from BASE_DIR.
-        - Renders with student/user context and streams as attachment.
-
-    Returns:
-        HttpResponse: DOCX file as application/vnd.openxmlformats-officedocument.wordprocessingml.document.
     """
-    student = getattr(request, "user", None).student if getattr(request, "user", None) else None
+    # Evitar acceder a request.user.student directamente (puede lanzar RelatedObjectDoesNotExist)
+    user = request.user
+    student = Student.objects.filter(user=user).select_related("career__faculty").first()
     if not student:
         messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
         return redirect("home")
