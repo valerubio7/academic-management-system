@@ -27,18 +27,27 @@ def user_login(request):
     Returns:
         HttpResponse: Redirect to dashboard/home or rendered login page.
 
-    Notes:
-        - Assumes the user model exposes a `role` attribute with values
-          {'student', 'professor', 'administrator'}.
-        - The UI labels in LoginForm are in Spanish to match the current UI.
+        Notes:
+                - Assumes the user model exposes a `role` attribute with values
+                    {'student', 'professor', 'administrator'}.
+                - Superusers are treated as administrators for redirects, and on login
+                    their persisted `role` is normalized to 'administrator' if needed.
+                - The UI labels in LoginForm are in Spanish to match the current UI.
     """
     # Helper to centralize role-based redirects.
     def redirect_by_role(user):
-        if user.role == 'student':
+        # If the logged user is a Django superuser, ensure they have the
+        # administrator role persisted (in case it wasn't set yet).
+        if getattr(user, 'is_superuser', False) and getattr(user, 'role', None) != 'administrator':
+            user.role = 'administrator'
+            user.save(update_fields=['role'])
+
+        if getattr(user, 'role', None) == 'student':
             return redirect('users:student-dashboard')
-        if user.role == 'professor':
+        if getattr(user, 'role', None) == 'professor':
             return redirect('users:professor-dashboard')
-        if user.role == 'administrator':
+        # Treat superusers as administrators regardless of the role field
+        if getattr(user, 'role', None) == 'administrator' or getattr(user, 'is_superuser', False):
             return redirect('users:admin-dashboard')
         return redirect('home')
 
@@ -52,6 +61,12 @@ def user_login(request):
 
             if user := authenticate(request, username=username, password=password):
                 login(request, user)
+
+                # If this account is a superuser, ensure the persistent role is set
+                if getattr(user, 'is_superuser', False) and getattr(user, 'role', None) != 'administrator':
+                    user.role = 'administrator'
+                    user.save(update_fields=['role'])
+
                 next_url = request.GET.get('next')
                 return redirect(next_url) if next_url else redirect_by_role(user)
             form.add_error(None, 'Incorrect username or password.')
