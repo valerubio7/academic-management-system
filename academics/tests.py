@@ -1,6 +1,5 @@
 from django.test import TestCase
-from academics.models import Faculty, Career, Subject, FinalExam, Grade
-from users.models import CustomUser, Student
+from app.models import Faculty, Career, Subject, FinalExam, Grade, CustomUser, Student
 import datetime
 
 

@@ -4,7 +4,7 @@ Registers Faculty, Career, Subject, FinalExam, and Grade with basic list and sea
 """
 
 from django.contrib import admin
-from .models import Faculty, Career, Subject, FinalExam, Grade
+from app.models import Faculty, Career, Subject, FinalExam, Grade
 
 
 @admin.register(Faculty)

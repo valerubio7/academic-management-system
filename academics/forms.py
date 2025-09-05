@@ -20,7 +20,7 @@ Example:
 """
 
 from django import forms
-from .models import Faculty, Career, Subject, FinalExam, Grade
+from app.models import Faculty, Career, Subject, FinalExam, Grade
 
 
 class FacultyForm(forms.ModelForm):
