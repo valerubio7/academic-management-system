@@ -39,16 +39,20 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '0.0.0.0').split(',')
 # Application definition
 
 INSTALLED_APPS = [
+    # default apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # own apps
     'users.apps.UsersConfig',
     'academics.apps.AcademicsConfig',
     'inscriptions.apps.InscriptionsConfig',
     'accounts.apps.AccountsConfig',
+    'app.apps.AppConfig'
 ]
 
 MIDDLEWARE = [
