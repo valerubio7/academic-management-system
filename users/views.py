@@ -24,7 +24,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from academics.forms import CareerForm, FacultyForm, FinalExamForm, GradeForm, SubjectForm
-from app.models import Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription, SubjectInscription, CustomUser, Professor, Student
+from app.models import (Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription, SubjectInscription, CustomUser, Professor, Student)
+from app.repositories import (UserRepository, FacultyRepository, CareerRepository, SubjectRepository, FinalExamRepository)
 from users.forms import AdministratorProfileForm, ProfessorProfileForm, StudentProfileForm, UserForm
 
 
@@ -55,7 +56,7 @@ def user_list(request):
     Returns:
         HttpResponse: Page with user queryset.
     """
-    users = CustomUser.objects.all()
+    users = UserRepository().list_all()
     return render(request, "users/user_list.html", {"users": users})
 
 
@@ -223,7 +224,7 @@ def faculty_list(request):
     Returns:
         HttpResponse: Page with faculties queryset.
     """
-    faculties = Faculty.objects.all()
+    faculties = FacultyRepository().list_all()
     return render(request, "users/faculty_list.html", {"faculties": faculties})
 
 
@@ -297,7 +298,7 @@ def career_list(request):
     Returns:
         HttpResponse: Page with careers queryset.
     """
-    careers = Career.objects.all()
+    careers = CareerRepository().list_all()
     return render(request, "users/career_list.html", {"careers": careers})
 
 
@@ -371,7 +372,7 @@ def subject_list(request):
     Returns:
         HttpResponse: Page with subjects queryset.
     """
-    subjects = Subject.objects.select_related("career").all()
+    subjects = SubjectRepository().list_all_with_career()
     return render(request, "users/subject_list.html", {"subjects": subjects})
 
 
@@ -481,7 +482,7 @@ def final_list(request):
     Returns:
         HttpResponse: Page with final exams queryset.
     """
-    finals = FinalExam.objects.select_related("subject").all()
+    finals = FinalExamRepository().list_all_with_subject()
     return render(request, "users/final_list.html", {"finals": finals})
 
 
