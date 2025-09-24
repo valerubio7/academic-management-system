@@ -32,20 +32,28 @@ class UserForm(forms.ModelForm):
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'first_name', 'last_name', 'email', 'dni','phone', 'birth_date', 'address', 'role', 'is_active']
+        fields = [
+            'username', 'first_name', 'last_name', 'email', 'dni', 'phone',
+            'birth_date', 'address', 'role', 'is_active'
+        ]
 
     def __init__(self, *args, **kwargs):
         """
         Initialize form and toggle password requirements based on instance state.
 
-        If editing an existing user (instance.pk is set), passwords are optional.
-        If creating a new user, passwords are required.
+        If editing an existing user (instance.pk is set), passwords are optional and role is disabled.
+        If creating a new user, passwords are required and role can be selected.
         """
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
+            # Editing existing user
             self.fields['password1'].required = False
             self.fields['password2'].required = False
+            # Disable role field to prevent role changes
+            self.fields['role'].disabled = True
+            self.fields['role'].help_text = "El rol no puede ser modificado una vez creado el usuario."
         else:
+            # Creating new user
             self.fields['password1'].required = True
             self.fields['password2'].required = True
 
@@ -119,7 +127,12 @@ class ProfessorProfileForm(forms.ModelForm):
     class Meta:
         model = Professor
         fields = ['professor_id', 'degree', 'category', 'hire_date']
-        labels = {'professor_id': 'Legajo Profesor', 'degree': 'Título', 'category': 'Categoría', 'hire_date': 'Fecha de Alta'}
+        labels = {
+            'professor_id': 'Legajo Profesor',
+            'degree': 'Título',
+            'category': 'Categoría',
+            'hire_date': 'Fecha de Alta'
+        }
 
 
 class AdministratorProfileForm(forms.ModelForm):

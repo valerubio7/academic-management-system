@@ -24,8 +24,15 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from academics.forms import CareerForm, FacultyForm, FinalExamForm, GradeForm, SubjectForm
-from app.models import (Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription, SubjectInscription, CustomUser, Professor, Student)
-from app.repositories import (UserRepository, FacultyRepository, CareerRepository, SubjectRepository, FinalExamRepository)
+from app.models import (
+    Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription,
+    SubjectInscription, CustomUser, Professor, Student
+)
+from app.repositories import (
+    FacultyRepository, CareerRepository,
+    SubjectRepository, FinalExamRepository
+)
+from app.services import UserManagementService
 from users.forms import AdministratorProfileForm, ProfessorProfileForm, StudentProfileForm, UserForm
 
 
@@ -56,7 +63,8 @@ def user_list(request):
     Returns:
         HttpResponse: Page with user queryset.
     """
-    users = UserRepository().list_all()
+    user_service = UserManagementService()
+    users = user_service.list_all_users_with_profiles()
     return render(request, "users/user_list.html", {"users": users})
 
 
@@ -64,17 +72,14 @@ def user_list(request):
 @user_passes_test(is_admin)
 def user_create(request):
     """
-    Create a new user and optional role-specific profile.
-
-    Behavior:
-        - Determines selected role from POST.
-        - Validates UserForm and the matching profile form.
-        - Creates both inside an atomic transaction.
+    Create a new user with mandatory role-specific profile.
 
     Returns:
         HttpResponse: Redirect to list on success or form page on error.
     """
+    user_service = UserManagementService()
     selected_role = None
+    
     if request.method == "POST":
         user_form = UserForm(request.POST)
         selected_role = request.POST.get("role")
@@ -91,37 +96,45 @@ def user_create(request):
         else:
             profile_form = None
 
-        if user_form.is_valid() and (profile_form is None or profile_form.is_valid()):
-            with transaction.atomic():
-                user = user_form.save()
-                if profile_form is not None:
-                    profile = profile_form.save(commit=False)
-                    profile.user = user
-                    profile.save()
-            messages.success(request, "Usuario creado correctamente.")
-            return redirect("users:user-list")
+        # Validate that both user form and profile form are valid
+        # Profile form is now mandatory when a role is selected
+        forms_valid = user_form.is_valid()
+        if profile_form is not None:
+            forms_valid = forms_valid and profile_form.is_valid()
+        elif selected_role:  # Role selected but no matching profile form
+            messages.error(request, "Debe seleccionar un rol válido y completar los datos del perfil.")
+            forms_valid = False
+
+        if forms_valid:
+            try:
+                user_data = user_form.cleaned_data
+                profile_data = profile_form.cleaned_data if profile_form else {}
+                
+                user_service.create_user_with_profile(user_data, profile_data)
+                messages.success(request, "Usuario creado correctamente.")
+                return redirect("users:user-list")
+            except Exception as e:
+                messages.error(request, f"Error al crear usuario: {str(e)}")
     else:
         user_form = UserForm()
         student_profile_form = StudentProfileForm()
         professor_profile_form = ProfessorProfileForm()
         administrator_profile_form = AdministratorProfileForm()
+        
     return render(request, "users/user_form.html", {
-            "user_form": user_form,
-            "student_profile_form": student_profile_form,
-            "professor_profile_form": professor_profile_form,
-            "administrator_profile_form": administrator_profile_form,
-            "selected_role": selected_role})
+        "user_form": user_form,
+        "student_profile_form": student_profile_form,
+        "professor_profile_form": professor_profile_form,
+        "administrator_profile_form": administrator_profile_form,
+        "selected_role": selected_role
+    })
 
 
 @login_required
 @user_passes_test(is_admin)
 def user_edit(request, pk):
     """
-    Update a user and its role-specific profile.
-
-    Behavior:
-        - Saves UserForm, swaps/creates/deletes related profile based on chosen role.
-        - All operations are transactional.
+    Update a user and its role-specific profile. Role cannot be changed.
 
     Args:
         pk (int): User primary key.
@@ -130,6 +143,8 @@ def user_edit(request, pk):
         HttpResponse: Redirect to list on success or form page on error.
     """
     user = get_object_or_404(CustomUser, pk=pk)
+    user_service = UserManagementService()
+    
     if request.method == "POST":
         user_form = UserForm(request.POST, instance=user)
         if user_form.is_valid():
@@ -152,48 +167,39 @@ def user_edit(request, pk):
                 profile_form = None
 
             if profile_form is None or profile_form.is_valid():
-                with transaction.atomic():
-                    user = user_form.save()
-                    if role != CustomUser.Role.STUDENT and getattr(
-                        user, "student", None
-                    ):
-                        user.student.delete()
-                    if role != CustomUser.Role.PROFESSOR and getattr(
-                        user, "professor", None
-                    ):
-                        user.professor.delete()
-                    if role != CustomUser.Role.ADMIN and getattr(
-                        user, "administrator", None
-                    ):
-                        user.administrator.delete()
-                    if profile_form is not None:
-                        profile = profile_form.save(commit=False)
-                        profile.user = user
-                        profile.save()
-                messages.success(request, "Usuario actualizado correctamente.")
-                return redirect("users:user-list")
+                try:
+                    user_data = user_form.cleaned_data
+                    profile_data = profile_form.cleaned_data if profile_form else None
+                    
+                    user_service.update_user_profile(user, user_data, profile_data)
+                    messages.success(request, "Usuario actualizado correctamente.")
+                    return redirect("users:user-list")
+                except Exception as e:
+                    messages.error(request, f"Error al actualizar usuario: {str(e)}")
 
         posted_role = request.POST.get("role")
         student_profile_form = StudentProfileForm(request.POST)
         professor_profile_form = ProfessorProfileForm(request.POST)
         administrator_profile_form = AdministratorProfileForm(request.POST)
         return render(request, "users/user_form.html", {
-                "user_form": user_form,
-                "student_profile_form": student_profile_form,
-                "professor_profile_form": professor_profile_form,
-                "administrator_profile_form": administrator_profile_form,
-                "selected_role": posted_role})
+            "user_form": user_form,
+            "student_profile_form": student_profile_form,
+            "professor_profile_form": professor_profile_form,
+            "administrator_profile_form": administrator_profile_form,
+            "selected_role": posted_role
+        })
     else:
         user_form = UserForm(instance=user)
         student_profile_form = StudentProfileForm(instance=getattr(user, "student", None))
         professor_profile_form = ProfessorProfileForm(instance=getattr(user, "professor", None))
         administrator_profile_form = AdministratorProfileForm(instance=getattr(user, "administrator", None))
         return render(request, "users/user_form.html", {
-                "user_form": user_form,
-                "student_profile_form": student_profile_form,
-                "professor_profile_form": professor_profile_form,
-                "administrator_profile_form": administrator_profile_form,
-                "selected_role": user.role})
+            "user_form": user_form,
+            "student_profile_form": student_profile_form,
+            "professor_profile_form": professor_profile_form,
+            "administrator_profile_form": administrator_profile_form,
+            "selected_role": user.role
+        })
 
 
 @login_required
@@ -209,8 +215,14 @@ def user_delete(request, pk):
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
     user = get_object_or_404(CustomUser, pk=pk)
+    user_service = UserManagementService()
+    
     if request.method == "POST":
-        user.delete()
+        try:
+            user_service.delete_user(user)
+            messages.success(request, "Usuario eliminado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar usuario: {str(e)}")
         return redirect("users:user-list")
     return render(request, "users/confirm_delete.html", {"user": user})
 
