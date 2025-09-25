@@ -33,3 +33,14 @@ class FinalExamRepository(BaseRepository):
             Queryset of FinalExam instances.
         """
         return self.list(filters={"subject_id__in": subject_ids}, order_by=("date",))
+
+    def list_by_subject(self, subject_code):
+        """List final exams by subject code, ordered by date.
+
+        Args:
+            subject_code: The subject code.
+
+        Returns:
+            Queryset of FinalExam instances.
+        """
+        return self.list(filters={"subject_id": subject_code}, order_by=("date",))

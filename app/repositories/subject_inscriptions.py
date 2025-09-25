@@ -41,3 +41,14 @@ class SubjectInscriptionRepository(BaseRepository):
             List of subject codes.
         """
         return list(self.get_queryset().filter(student_id=student_id).values_list("subject__code", flat=True))
+
+    def list_by_subject(self, subject_code):
+        """List subject inscriptions by subject code.
+
+        Args:
+            subject_code: The subject code.
+
+        Returns:
+            Queryset of SubjectInscription instances.
+        """
+        return self.list(filters={"subject_id": subject_code})
