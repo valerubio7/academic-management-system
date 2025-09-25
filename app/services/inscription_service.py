@@ -47,78 +47,59 @@ class InscriptionService:
         self.final_exam_repository = final_exam_repository or FinalExamRepository()
         self.grade_repository = grade_repository or GradeRepository()
 
-    def inscribe_student_to_subject(self, student_id, subject_code, validate_eligibility=True):
+    def inscribe_student_to_subject(self, student, subject):
         """
-        Inscribe student to subject.
+        Inscribe student to subject with grade creation.
 
-        Business rules:
-        - Student must exist
-        - Subject must exist and belong to student's career
-        - No duplicate inscriptions
+        Business logic from subject_inscribe view.
         """
         try:
             with transaction.atomic():
-                # Get student and subject via repositories
-                student = self.student_repository.get_by_id(student_id)
-                if not student:
-                    raise InscriptionServiceError(f"Student {student_id} not found")
+                # Create or get inscription (from view logic)
+                inscription, created = self.subject_inscription_repository.get_or_create(
+                    student_id=student.id,
+                    subject_code=subject.code
+                )
 
-                subject = self.subject_repository.by_code(subject_code)
-                if not subject:
-                    raise InscriptionServiceError(f"Subject {subject_code} not found")
+                # Ensure grade record exists (from view logic)
+                grade, grade_created = self.grade_repository.get_or_create(
+                    student_id=student.id,
+                    subject_code=subject.code
+                )
 
-                # Validate career match if requested
-                if validate_eligibility and subject.career != student.career:
-                    raise InscriptionServiceError(f"Subject {subject_code} does not belong to student's career")
-
-                # Check for duplicate
-                existing = self.subject_inscription_repository.get_by_student_and_subject(student_id, subject.id)
-                if existing:
-                    raise InscriptionServiceError(f"Student already inscribed to subject {subject_code}")
-
-                # Create inscription via repository
-                inscription_data = {'student': student, 'subject': subject}
-                return self.subject_inscription_repository.create(inscription_data)
+                return {
+                    'inscription': inscription,
+                    'inscription_created': created,
+                    'grade': grade,
+                    'grade_created': grade_created
+                }
 
         except Exception as e:
-            if isinstance(e, InscriptionServiceError):
-                raise
             raise InscriptionServiceError(f"Failed to inscribe student to subject: {str(e)}") from e
 
-    def inscribe_student_to_final_exam(self, student_id, final_exam_id, validate_eligibility=True):
+    def inscribe_student_to_final_exam(self, student, final_exam):
         """
-        Inscribe student to final exam.
+        Inscribe student to final exam with eligibility validation.
 
-        Business rules:
-        - Student must exist
-        - Final exam must exist and belong to student's career
-        - No duplicate inscriptions
+        Business logic from final_exam_inscribe view.
         """
         try:
             with transaction.atomic():
-                # Get student and final exam via repositories
-                student = self.student_repository.get_by_id(student_id)
-                if not student:
-                    raise InscriptionServiceError(f"Student {student_id} not found")
+                # Validate eligibility: student must have REGULAR status (from view logic)
+                grade = self.grade_repository.list(
+                    filters={'student': student, 'subject': final_exam.subject}
+                    ).order_by('-id').first()
 
-                final_exam = self.final_exam_repository.get_by_id(final_exam_id)
-                if not final_exam:
-                    raise InscriptionServiceError(f"Final exam {final_exam_id} not found")
+                if not grade or grade.status not in ['REGULAR']:  # Grade.StatusSubject.REGULAR
+                    raise InscriptionServiceError("Solo puedes inscribirte si la materia está regular.")
 
-                # Validate career match if requested
-                if validate_eligibility and final_exam.subject.career != student.career:
-                    raise InscriptionServiceError("Final exam does not belong to student's career")
-
-                # Check for duplicate
-                existing = self.final_exam_inscription_repository.get_by_student_and_final_exam(
-                    student_id, final_exam_id
+                # Create or get inscription (from view logic)
+                inscription, created = self.final_exam_inscription_repository.get_or_create(
+                    student_id=student.id,
+                    final_exam_id=final_exam.id
                 )
-                if existing:
-                    raise InscriptionServiceError("Student already inscribed to this final exam")
 
-                # Create inscription via repository
-                inscription_data = {'student': student, 'final_exam': final_exam}
-                return self.final_exam_inscription_repository.create(inscription_data)
+                return {'inscription': inscription, 'created': created}
 
         except Exception as e:
             if isinstance(e, InscriptionServiceError):
@@ -136,7 +117,8 @@ class InscriptionService:
                 inscription = self.subject_inscription_repository.get_by_student_and_subject(student_id, subject.id)
                 if not inscription:
                     raise InscriptionServiceError(
-                        f"No inscription found for student {student_id} in subject {subject_code}")
+                        f"No inscription found for student {student_id} in subject {subject_code}"
+                    )
 
                 self.subject_inscription_repository.delete(inscription)
                 return True
