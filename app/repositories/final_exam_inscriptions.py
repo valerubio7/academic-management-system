@@ -29,7 +29,11 @@ class FinalExamInscriptionRepository(BaseRepository):
         Returns:
             Queryset of FinalExamInscription instances.
         """
-        return self.list(filters={"final_exam_id": final_exam_id}, select_related=("student__user",), order_by=("student__user__last_name", "student__user__first_name"))
+        return self.list(
+            filters={"final_exam_id": final_exam_id},
+            select_related=("student__user",),
+            order_by=("student__user__last_name", "student__user__first_name")
+        )
 
     def list_ids_for_student(self, student_id):
         """List final exam IDs for a student.
@@ -41,3 +45,14 @@ class FinalExamInscriptionRepository(BaseRepository):
             List of final exam IDs.
         """
         return list(self.get_queryset().filter(student_id=student_id).values_list("final_exam_id", flat=True))
+
+    def list_by_final_exam(self, final_exam_id):
+        """List inscriptions for a final exam.
+
+        Args:
+            final_exam_id: The final exam ID.
+
+        Returns:
+            Queryset of FinalExamInscription instances.
+        """
+        return self.get_queryset().filter(final_exam_id=final_exam_id)

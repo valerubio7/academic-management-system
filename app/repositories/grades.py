@@ -41,7 +41,11 @@ class GradeRepository(BaseRepository):
         Returns:
             Queryset of Grade instances.
         """
-        return self.list(filters={"subject_id": subject_code}, select_related=("student__user",), order_by=("student__user__last_name", "student__user__first_name"))
+        return self.list(
+            filters={"subject_id": subject_code},
+            select_related=("student__user",),
+            order_by=("student__user__last_name", "student__user__first_name")
+        )
 
     def list_by_subject(self, subject_code):
         """List grades by subject code.
@@ -64,4 +68,7 @@ class GradeRepository(BaseRepository):
         Returns:
             Tuple of (instance, created).
         """
-        return self.model.objects.get_or_create(student_id=student_id, subject_id=subject_code)
+        # Need to get subject ID from subject code first
+        from app.models.subject import Subject
+        subject = Subject.objects.get(code=subject_code)
+        return self.model.objects.get_or_create(student_id=student_id, subject_id=subject.pk)

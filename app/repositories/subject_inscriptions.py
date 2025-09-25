@@ -18,7 +18,10 @@ class SubjectInscriptionRepository(BaseRepository):
         Returns:
             Tuple of (instance, created).
         """
-        return self.model.objects.get_or_create(student_id=student_id, subject_id=subject_code)
+        # Need to get subject ID from subject code first
+        from app.models.subject import Subject
+        subject = Subject.objects.get(code=subject_code)
+        return self.model.objects.get_or_create(student_id=student_id, subject_id=subject.pk)
 
     def list_for_student_with_subject(self, student_id):
         """List subject inscriptions for a student with subject selected.
@@ -42,13 +45,13 @@ class SubjectInscriptionRepository(BaseRepository):
         """
         return list(self.get_queryset().filter(student_id=student_id).values_list("subject__code", flat=True))
 
-    def list_by_subject(self, subject_code):
-        """List subject inscriptions by subject code.
+    def list_by_subject_id(self, subject_id):
+        """List subject inscriptions by subject ID.
 
         Args:
-            subject_code: The subject code.
+            subject_id: The subject ID.
 
         Returns:
             Queryset of SubjectInscription instances.
         """
-        return self.list(filters={"subject_id": subject_code})
+        return self.list(filters={"subject_id": subject_id})
