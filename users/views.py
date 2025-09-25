@@ -11,22 +11,14 @@ Notes:
     - Keeps business rules minimal in views; core rules live in models/services.
 """
 
-from io import BytesIO
-from pathlib import Path
-
-from docxtpl import DocxTemplate
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.utils import timezone
 
 from academics.forms import CareerForm, FacultyForm, FinalExamForm, GradeForm, SubjectForm
 from app.models import (
-    Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription,
-    SubjectInscription, CustomUser, Professor, Student
+    Career, Faculty, FinalExam, Grade, Subject, CustomUser
 )
 from app.repositories import (
     FacultyRepository, CareerRepository,
@@ -107,10 +99,12 @@ def user_create(request):
 
         if forms_valid:
             try:
-                user_data = user_form.cleaned_data
+                # Use form's save method to handle password hashing
+                user = user_form.save()
                 profile_data = profile_form.cleaned_data if profile_form else {}
                 
-                user_service.create_user_with_profile(user_data, profile_data)
+                # Create profile for the user
+                user_service._create_profile_for_user(user, profile_data)
                 messages.success(request, "Usuario creado correctamente.")
                 return redirect("users:user-list")
             except Exception as e:
@@ -249,11 +243,18 @@ def faculty_create(request):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import FacultyService
+    
     if request.method == "POST":
         form = FacultyForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("users:faculty-list")
+            try:
+                faculty_service = FacultyService()
+                faculty_service.create_faculty(form.cleaned_data)
+                messages.success(request, "Facultad creada correctamente.")
+                return redirect("users:faculty-list")
+            except Exception as e:
+                messages.error(request, f"Error al crear facultad: {str(e)}")
     else:
         form = FacultyForm()
     return render(request, "users/faculty_form.html", {"form": form})
@@ -271,12 +272,19 @@ def faculty_edit(request, code):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import FacultyService
+    
     faculty = get_object_or_404(Faculty, code=code)
     if request.method == "POST":
         form = FacultyForm(request.POST, instance=faculty)
         if form.is_valid():
-            form.save()
-            return redirect("users:faculty-list")
+            try:
+                faculty_service = FacultyService()
+                faculty_service.update_faculty(faculty, form.cleaned_data)
+                messages.success(request, "Facultad actualizada correctamente.")
+                return redirect("users:faculty-list")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar facultad: {str(e)}")
     else:
         form = FacultyForm(instance=faculty)
     return render(request, "users/faculty_form.html", {"form": form})
@@ -294,9 +302,16 @@ def faculty_delete(request, code):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import FacultyService
+    
     faculty = get_object_or_404(Faculty, code=code)
     if request.method == "POST":
-        faculty.delete()
+        try:
+            faculty_service = FacultyService()
+            faculty_service.delete_faculty(faculty)
+            messages.success(request, "Facultad eliminada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar facultad: {str(e)}")
         return redirect("users:faculty-list")
     return render(request, "users/confirm_delete.html", {"object": faculty, "back": "users:faculty-list"})
 
@@ -323,11 +338,18 @@ def career_create(request):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import CareerService
+    
     if request.method == "POST":
         form = CareerForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("users:career-list")
+            try:
+                career_service = CareerService()
+                career_service.create_career(form.cleaned_data)
+                messages.success(request, "Carrera creada correctamente.")
+                return redirect("users:career-list")
+            except Exception as e:
+                messages.error(request, f"Error al crear carrera: {str(e)}")
     else:
         form = CareerForm()
     return render(request, "users/career_form.html", {"form": form})
@@ -345,12 +367,19 @@ def career_edit(request, code):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import CareerService
+    
     career = get_object_or_404(Career, code=code)
     if request.method == "POST":
         form = CareerForm(request.POST, instance=career)
         if form.is_valid():
-            form.save()
-            return redirect("users:career-list")
+            try:
+                career_service = CareerService()
+                career_service.update_career(career, form.cleaned_data)
+                messages.success(request, "Carrera actualizada correctamente.")
+                return redirect("users:career-list")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar carrera: {str(e)}")
     else:
         form = CareerForm(instance=career)
     return render(request, "users/career_form.html", {"form": form})
@@ -368,9 +397,16 @@ def career_delete(request, code):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import CareerService
+    
     career = get_object_or_404(Career, code=code)
     if request.method == "POST":
-        career.delete()
+        try:
+            career_service = CareerService()
+            career_service.delete_career(career)
+            messages.success(request, "Carrera eliminada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar carrera: {str(e)}")
         return redirect("users:career-list")
     return render(request, "users/confirm_delete.html", {"object": career, "back": "users:career-list"})
 
@@ -397,11 +433,18 @@ def subject_create(request):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import SubjectService
+    
     if request.method == "POST":
         form = SubjectForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("users:subject-list")
+            try:
+                subject_service = SubjectService()
+                subject_service.create_subject(form.cleaned_data)
+                messages.success(request, "Materia creada correctamente.")
+                return redirect("users:subject-list")
+            except Exception as e:
+                messages.error(request, f"Error al crear materia: {str(e)}")
     else:
         form = SubjectForm()
     return render(request, "users/subject_form.html", {"form": form})
@@ -419,12 +462,19 @@ def subject_edit(request, code):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import SubjectService
+    
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
         form = SubjectForm(request.POST, instance=subject)
         if form.is_valid():
-            form.save()
-            return redirect("users:subject-list")
+            try:
+                subject_service = SubjectService()
+                subject_service.update_subject(subject, form.cleaned_data)
+                messages.success(request, "Materia actualizada correctamente.")
+                return redirect("users:subject-list")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar materia: {str(e)}")
     else:
         form = SubjectForm(instance=subject)
     return render(request, "users/subject_form.html", {"form": form})
@@ -442,9 +492,16 @@ def subject_delete(request, code):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import SubjectService
+    
     subject = get_object_or_404(Subject, code=code)
     if request.method == "POST":
-        subject.delete()
+        try:
+            subject_service = SubjectService()
+            subject_service.delete_subject(subject)
+            messages.success(request, "Materia eliminada correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar materia: {str(e)}")
         return redirect("users:subject-list")
     return render(request, "users/confirm_delete.html", {"object": subject, "back": "users:subject-list"})
 
@@ -461,28 +518,28 @@ def assign_subject_professors(request, code):
     Returns:
         HttpResponse: Redirect to list after processing or form page (GET).
     """
+    from app.services import AssignmentService
+    
     subject = get_object_or_404(Subject, code=code)
+    
     if request.method == "POST":
-        # Professor primary key is a string (professor_id), keep as-is
-        selected_ids = set(request.POST.getlist("professors"))
-        current_ids = set(subject.professors.values_list("pk", flat=True))
-
-        to_add = selected_ids - current_ids
-        to_remove = current_ids - selected_ids
-
-        if to_add or to_remove:
-            with transaction.atomic():
-                if to_add:
-                    subject.professors.add(*to_add)
-                if to_remove:
-                    subject.professors.remove(*to_remove)
-            messages.success(request, "Asignaciones actualizadas correctamente.")
-        else:
-            messages.info(request, "No hubo cambios en las asignaciones.")
+        try:
+            assignment_service = AssignmentService()
+            selected_ids = request.POST.getlist("professors")
+            result = assignment_service.update_subject_professor_assignments(code, selected_ids)
+            
+            if result['changes_made']:
+                messages.success(request, result['message'])
+            else:
+                messages.info(request, result['message'])
+        except Exception as e:
+            messages.error(request, f"Error en las asignaciones: {str(e)}")
+            
         return redirect("users:subject-list")
 
-    profs = Professor.objects.select_related("user").all()
-    return render(request, "users/assign_professors.html", {"subject": subject, "professors": profs})
+    assignment_service = AssignmentService()
+    professors = assignment_service.get_all_professors()
+    return render(request, "users/assign_professors.html", {"subject": subject, "professors": professors})
 
 
 @login_required
@@ -507,11 +564,18 @@ def final_create(request):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import FinalExamService
+    
     if request.method == "POST":
         form = FinalExamForm(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("users:final-list")
+            try:
+                final_exam_service = FinalExamService()
+                final_exam_service.create_final_exam(form.cleaned_data)
+                messages.success(request, "Final creado correctamente.")
+                return redirect("users:final-list")
+            except Exception as e:
+                messages.error(request, f"Error al crear final: {str(e)}")
     else:
         form = FinalExamForm()
     return render(request, "users/final_form.html", {"form": form})
@@ -529,12 +593,19 @@ def final_edit(request, pk):
     Returns:
         HttpResponse: Redirect on success or form page on error.
     """
+    from app.services import FinalExamService
+    
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
         form = FinalExamForm(request.POST, instance=final)
         if form.is_valid():
-            form.save()
-            return redirect("users:final-list")
+            try:
+                final_exam_service = FinalExamService()
+                final_exam_service.update_final_exam(final, form.cleaned_data)
+                messages.success(request, "Final actualizado correctamente.")
+                return redirect("users:final-list")
+            except Exception as e:
+                messages.error(request, f"Error al actualizar final: {str(e)}")
     else:
         form = FinalExamForm(instance=final)
     return render(request, "users/final_form.html", {"form": form})
@@ -552,9 +623,16 @@ def final_delete(request, pk):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import FinalExamService
+    
     final = get_object_or_404(FinalExam, pk=pk)
     if request.method == "POST":
-        final.delete()
+        try:
+            final_exam_service = FinalExamService()
+            final_exam_service.delete_final_exam(final)
+            messages.success(request, "Final eliminado correctamente.")
+        except Exception as e:
+            messages.error(request, f"Error al eliminar final: {str(e)}")
         return redirect("users:final-list")
     return render(request, "users/confirm_delete.html", {"object": final, "back": "users:final-list"})
 
@@ -571,28 +649,28 @@ def assign_final_professors(request, pk):
     Returns:
         HttpResponse: Redirect to list after processing or form page (GET).
     """
+    from app.services import AssignmentService
+    
     final = get_object_or_404(FinalExam, pk=pk)
+    
     if request.method == "POST":
-        # Professor primary key is a string (professor_id), keep as-is
-        selected_ids = set(request.POST.getlist("professors"))
-        current_ids = set(final.professors.values_list("pk", flat=True))
-
-        to_add = selected_ids - current_ids
-        to_remove = current_ids - selected_ids
-
-        if to_add or to_remove:
-            with transaction.atomic():
-                if to_add:
-                    final.professors.add(*to_add)
-                if to_remove:
-                    final.professors.remove(*to_remove)
-            messages.success(request, "Asignaciones del final actualizadas correctamente.")
-        else:
-            messages.info(request, "No hubo cambios en las asignaciones.")
+        try:
+            assignment_service = AssignmentService()
+            selected_ids = request.POST.getlist("professors")
+            result = assignment_service.update_final_professor_assignments(pk, selected_ids)
+            
+            if result['changes_made']:
+                messages.success(request, result['message'])
+            else:
+                messages.info(request, result['message'])
+        except Exception as e:
+            messages.error(request, f"Error en las asignaciones: {str(e)}")
+            
         return redirect("users:final-list")
 
-    profs = Professor.objects.select_related("user").all()
-    return render(request, "users/assign_professors.html", {"final": final, "professors": profs})
+    assignment_service = AssignmentService()
+    professors = assignment_service.get_all_professors()
+    return render(request, "users/assign_professors.html", {"final": final, "professors": professors})
 
 
 # ------- Student Views -------
@@ -601,62 +679,38 @@ def is_student(user):
     return user.is_authenticated and user.role == CustomUser.Role.STUDENT
 
 
+def is_student_with_profile(user):
+    """Return True if the user is authenticated, has student role and student profile."""
+    return (user.is_authenticated and
+            user.role == CustomUser.Role.STUDENT and
+            hasattr(user, 'student'))
+
+
 @login_required
 @user_passes_test(is_student)
 def student_dashboard(request):
     """
-    Render student dashboard with subjects, grades, and inscriptions.
-
-    Context:
-        subjects: Career subjects for the student.
-        inscriptions: Subject inscriptions for the student.
-        grades: Grade queryset for the student.
-        eligible_finals: Finals where status is REGULAR.
-        final_inscriptions: Final exam inscriptions.
-        inscribed_final_ids: IDs of finals already inscribed.
-        inscribed_subject_codes: Codes of subjects already inscribed.
+    Render student dashboard.
 
     Returns:
-        HttpResponse: Dashboard page.
+        HttpResponse: Dashboard page with student data.
     """
-    student = getattr(request.user, "student", None)
-    if not student:
-        messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
+    from app.services import StudentService
+    
+    try:
+        student_service = StudentService()
+        dashboard_data = student_service.get_student_dashboard_data(request.user)
+        return render(request, "users/student_dashboard.html", dashboard_data)
+    except Exception as e:
+        messages.error(request, str(e))
         return redirect("home")
-    subjects = Subject.objects.filter(career=student.career)
-    inscriptions = SubjectInscription.objects.filter(student=student).select_related("subject")
-    inscribed_subject_codes = list(inscriptions.values_list("subject__code", flat=True))
-    grades = Grade.objects.filter(student=student).select_related("subject")
-
-    eligible_subject_ids = (
-        grades.filter(status=Grade.StatusSubject.REGULAR)
-        .values_list("subject_id", flat=True)
-        .distinct()
-    )
-    eligible_finals = FinalExam.objects.filter(subject_id__in=eligible_subject_ids)
-
-    final_inscriptions = (
-        FinalExamInscription.objects.filter(student=student)
-        .select_related("final_exam__subject")
-        .order_by("final_exam__date")
-    )
-    inscribed_final_ids = list(final_inscriptions.values_list("final_exam_id", flat=True))
-
-    return render(request, "users/student_dashboard.html", {
-            "subjects": subjects,
-            "inscriptions": inscriptions,
-            "grades": grades,
-            "eligible_finals": eligible_finals,
-            "final_inscriptions": final_inscriptions,
-            "inscribed_final_ids": inscribed_final_ids,
-            "inscribed_subject_codes": inscribed_subject_codes})
 
 
 @login_required
 @user_passes_test(is_student)
 def subject_inscribe(request, subject_code):
     """
-    Create subject inscription and ensure grade record exists.
+    Create subject inscription.
 
     Args:
         subject_code (str): Subject code (PK).
@@ -664,17 +718,27 @@ def subject_inscribe(request, subject_code):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import InscriptionService
+    
     student = request.user.student
     subject = get_object_or_404(Subject, code=subject_code, career=student.career)
+    
     if request.method == "POST":
-        created = False
-        obj, created = SubjectInscription.objects.get_or_create(student=student, subject=subject)
-        Grade.objects.get_or_create(student=student, subject=subject)
-        if created:
-            messages.success(request, "Inscripción a la materia realizada.")
-        else:
-            messages.info(request, "Ya estabas inscripto en esta materia.")
+
+
+        try:
+            inscription_service = InscriptionService()
+            result = inscription_service.inscribe_student_to_subject(student, subject)
+            
+            if result['inscription_created']:
+                messages.success(request, "Inscripción a la materia realizada.")
+            else:
+                messages.info(request, "Ya estabas inscripto en esta materia.")
+        except Exception as e:
+            messages.error(request, f"Error en la inscripción: {str(e)}")
+        
         return redirect("users:student-dashboard")
+    
     return render(request, "users/inscribe_confirm.html", {"subject": subject})
 
 
@@ -682,7 +746,7 @@ def subject_inscribe(request, subject_code):
 @user_passes_test(is_student)
 def final_exam_inscribe(request, final_exam_id):
     """
-    Create final exam inscription if the subject status is REGULAR.
+    Create final exam inscription.
 
     Args:
         final_exam_id (int): FinalExam primary key.
@@ -690,75 +754,57 @@ def final_exam_inscribe(request, final_exam_id):
     Returns:
         HttpResponse: Confirmation page (GET) or redirect (POST).
     """
+    from app.services import InscriptionService
+    
     student = request.user.student
     final_exam = get_object_or_404(FinalExam, pk=final_exam_id, subject__career=student.career)
-    grade = Grade.objects.filter(student=student, subject=final_exam.subject).order_by("-id").first()
-    if not grade or grade.status not in [Grade.StatusSubject.REGULAR]:
-        messages.error(request, "Solo puedes inscribirte si la materia está regular.")
+    
+    # Check if student can inscribe (has REGULAR status)
+    inscription_service = InscriptionService()
+    try:
+        inscription_service._validate_final_exam_inscription_requirements(student, final_exam)
+    except Exception:
+        # Redirect if cannot inscribe
         return redirect("users:student-dashboard")
+    
     if request.method == "POST":
-        FinalExamInscription.objects.get_or_create(student=student, final_exam=final_exam)
-        messages.success(request, "Inscripción al final realizada.")
+        try:
+            inscription_service.inscribe_student_to_final_exam(student, final_exam)
+            messages.success(request, "Inscripción al final realizada.")
+        except Exception as e:
+            messages.error(request, str(e))
+        
         return redirect("users:student-dashboard")
+    
     return render(request, "users/inscribe_confirm.html", {"final_exam": final_exam})
 
 
 @login_required
-@user_passes_test(is_student)
 def download_regular_certificate(request):
     """
     Generate and download a 'regular student' certificate as DOCX.
     """
-    # Evitar acceder a request.user.student directamente (puede lanzar RelatedObjectDoesNotExist)
-    user = request.user
-    student = Student.objects.filter(user=user).select_related("career__faculty").first()
-    if not student:
-        messages.error(request, "Tu perfil de estudiante no está configurado. Contactá a un administrador.")
+    from app.services import CertificateService
+    
+    # Check if user has student profile
+    if not is_student_with_profile(request.user):
         return redirect("home")
-
-    template_path = Path(settings.BASE_DIR) / "regular_certificate.docx"
-    if not template_path.exists():
-        messages.error(request, "No se encontró la plantilla de certificado.")
-        return redirect("users:student-dashboard")
-
-    today = timezone.localdate()
-    context = {
-        "full_name": request.user.get_full_name() or request.user.username,
-        "first_name": request.user.first_name,
-        "last_name": request.user.last_name,
-        "dni": request.user.dni,
-        "student_id": student.student_id,
-        "career_name": student.career.name if student.career else "",
-        "career_code": student.career.code if student.career else "",
-        "faculty_name": (
-            student.career.faculty.name
-            if getattr(student, "career", None) and student.career and student.career.faculty
-            else ""
-        ),
-        "enrollment_date": student.enrollment_date.strftime("%d/%m/%Y") if student.enrollment_date else "",
-        "today_date": today.strftime("%d/%m/%Y"),
-        "today_day": f"{today.day:02d}",
-        "today_month": f"{today.month:02d}",
-        "today_year": f"{today.year}",
-    }
-
+    
     try:
-        doc = DocxTemplate(str(template_path))
-        doc.render(context)
-        output = BytesIO()
-        doc.save(output)
-        output.seek(0)
-    except Exception:
-        messages.error(request, "Ocurrió un error al generar el certificado.")
+        certificate_service = CertificateService()
+        output = certificate_service.generate_regular_certificate(request.user)
+        filename = certificate_service.get_regular_certificate_filename(request.user)
+        
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+        return response
+        
+    except Exception as e:
+        messages.error(request, str(e))
         return redirect("users:student-dashboard")
-
-    filename = f"certificado-regular-{request.user.last_name or request.user.username}-{today.strftime('%Y%m%d')}.docx"
-    response = HttpResponse(
-        output.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    )
-    response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
-    return response
 
 
 # ------- Professor Views -------
@@ -771,25 +817,27 @@ def is_professor(user):
 @user_passes_test(is_professor)
 def professor_dashboard(request):
     """
-    Render professor dashboard with assigned subjects and finals.
+    Render professor dashboard.
 
     Returns:
-        HttpResponse: Dashboard page.
+        HttpResponse: Dashboard page with professor data.
     """
-    professor = getattr(request.user, "professor", None)
-    if not professor:
-        messages.error(request, "Tu perfil de profesor no está configurado. Contactá a un administrador.")
+    from app.services import ProfessorService
+    
+    try:
+        professor_service = ProfessorService()
+        dashboard_data = professor_service.get_professor_dashboard_data(request.user)
+        return render(request, "users/professor_dashboard.html", dashboard_data)
+    except Exception as e:
+        messages.error(request, str(e))
         return redirect("home")
-    subjects = professor.subjects.all()
-    finals = professor.final_exams.select_related("subject").all()
-    return render(request, "users/professor_dashboard.html", {"subjects": subjects, "finals": finals})
 
 
 @login_required
 @user_passes_test(is_professor)
 def grade_list(request, subject_code):
     """
-    List grades for a subject and backfill missing Grade entries.
+    List grades for a subject.
 
     Args:
         subject_code (str): Subject code (PK) assigned to the professor.
@@ -797,20 +845,18 @@ def grade_list(request, subject_code):
     Returns:
         HttpResponse: Page with grades queryset.
     """
+    from app.services import GradeService
+    
     professor = request.user.professor
     subject = get_object_or_404(Subject, code=subject_code, professors=professor)
-    enrolled_student_ids = set(SubjectInscription.objects.filter(subject=subject).values_list("student_id", flat=True))
-    existing_grade_student_ids = set(Grade.objects.filter(subject=subject).values_list("student_id", flat=True))
-    missing_ids = enrolled_student_ids - existing_grade_student_ids
-    if missing_ids:
-        Grade.objects.bulk_create([Grade(student_id=sid, subject=subject) for sid in missing_ids])
-
-    grades = (
-        Grade.objects.filter(subject=subject)
-        .select_related("student__user")
-        .order_by("student__user__last_name", "student__user__first_name")
-    )
-    return render(request, "users/grade_list.html", {"grades": grades, "subject": subject})
+    
+    try:
+        grade_service = GradeService()
+        grades = grade_service.get_subject_grades_with_backfill(subject, professor)
+        return render(request, "users/grade_list.html", {"grades": grades, "subject": subject})
+    except Exception as e:
+        messages.error(request, f"Error al obtener calificaciones: {str(e)}")
+        return redirect("users:professor-dashboard")
 
 
 @login_required
@@ -819,34 +865,35 @@ def grade_edit(request, pk):
     """
     Edit a grade record for a student in a professor's subject.
 
-    Guards:
-        - Professor must be assigned to the subject.
-        - Student must be inscribed in the subject.
-
     Args:
         pk (int): Grade primary key.
 
     Returns:
         HttpResponse: Redirect to grade list on success or form page on error.
     """
+    from app.services import GradeService
+    
     grade = get_object_or_404(Grade, pk=pk)
-    if grade.subject not in request.user.professor.subjects.all():
-        messages.error(request, "No puede editar notas de materias no asignadas.")
+    grade_service = GradeService()
+    
+    try:
+        # Validate permissions through service
+        grade_service.validate_grade_edit_permissions(grade, request.user.professor)
+    except Exception as e:
+        messages.error(request, str(e))
         return redirect("users:professor-dashboard")
-    if not SubjectInscription.objects.filter(student=grade.student, subject=grade.subject).exists():
-        messages.error(request, "Solo puede calificar a estudiantes inscriptos en la materia.")
-        return redirect("users:grade-list", subject_code=grade.subject.code)
 
     if request.method == "POST":
         form = GradeForm(request.POST, instance=grade)
         if form.is_valid():
-            status_was_changed = "status" in form.changed_data
-            saved = form.save()
-            if not status_was_changed:
-                saved.update_status()
-            return redirect("users:grade-list", subject_code=grade.subject.code)
+            try:
+                grade_service.update_grade(grade, form.cleaned_data)
+                return redirect("users:grade-list", subject_code=grade.subject.code)
+            except Exception as e:
+                messages.error(request, f"Error al actualizar calificación: {str(e)}")
     else:
         form = GradeForm(instance=grade)
+    
     return render(request, "users/grade_form.html", {"form": form, "grade": grade})
 
 
@@ -862,12 +909,12 @@ def professor_final_inscriptions(request, final_exam_id):
     Returns:
         HttpResponse: Page with inscriptions queryset.
     """
-    professor = request.user.professor
-    final_exam = get_object_or_404(FinalExam, id=final_exam_id, professors=professor)
-    inscriptions = (
-        FinalExamInscription.objects.filter(final_exam=final_exam)
-        .select_related("student__user")
-        .order_by("student__user__last_name", "student__user__first_name")
-    )
-    return render(request, "users/professor_final_inscriptions.html", {
-        "final_exam": final_exam, "inscriptions": inscriptions})
+    from app.services import ProfessorService
+    
+    try:
+        professor_service = ProfessorService()
+        inscriptions_data = professor_service.get_final_exam_inscriptions(final_exam_id, request.user.professor)
+        return render(request, "users/professor_final_inscriptions.html", inscriptions_data)
+    except Exception as e:
+        messages.error(request, str(e))
+        return redirect("users:professor-dashboard")
