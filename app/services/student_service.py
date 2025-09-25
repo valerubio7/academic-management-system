@@ -98,3 +98,63 @@ class StudentService:
             if isinstance(e, StudentServiceError):
                 raise
             raise StudentServiceError(f"Error getting dashboard data: {str(e)}") from e
+
+    def validate_and_get_subject_for_inscription(self, user, subject_code):
+        """
+        Validate and get subject for inscription.
+        
+        Business logic from subject_inscribe view.
+        """
+        try:
+            student = getattr(user, "student", None)
+            if not student:
+                raise StudentServiceError("Tu perfil de estudiante no está configurado.")
+            
+            # Get subject and validate it belongs to student's career
+            subject = self.subject_repository.by_code(subject_code)
+            if not subject:
+                raise StudentServiceError("Materia no encontrada.")
+            
+            if subject.career != student.career:
+                raise StudentServiceError("Esta materia no pertenece a tu carrera.")
+            
+            return {"student": student, "subject": subject}
+            
+        except Exception as e:
+            if isinstance(e, StudentServiceError):
+                raise
+            raise StudentServiceError(f"Error validating subject inscription: {str(e)}") from e
+
+    def validate_and_get_final_for_inscription(self, user, final_exam_id):
+        """
+        Validate and get final exam for inscription.
+        
+        Business logic from final_exam_inscribe view.
+        """
+        try:
+            student = getattr(user, "student", None)
+            if not student:
+                raise StudentServiceError("Tu perfil de estudiante no está configurado.")
+            
+            # Get final exam and validate career
+            final_exam = self.final_exam_repository.get_by_id(final_exam_id)
+            if not final_exam:
+                raise StudentServiceError("Final no encontrado.")
+            
+            if final_exam.subject.career != student.career:
+                raise StudentServiceError("Este final no pertenece a tu carrera.")
+            
+            # Validate student has REGULAR status
+            grade = self.grade_repository.list(
+                filters={'student': student, 'subject': final_exam.subject}
+            ).order_by('-id').first()
+            
+            if not grade or grade.status not in ['REGULAR']:
+                raise StudentServiceError("Solo puedes inscribirte si la materia está regular.")
+            
+            return {"student": student, "final_exam": final_exam}
+            
+        except Exception as e:
+            if isinstance(e, StudentServiceError):
+                raise
+            raise StudentServiceError(f"Error validating final inscription: {str(e)}") from e

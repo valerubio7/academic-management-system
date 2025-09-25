@@ -114,9 +114,12 @@ class UserManagementService:
         """Create role-specific profile via appropriate repository."""
         profile_data_with_user = {**profile_data, 'user': user}
 
-        if user.role == 'student':
+        # Import to use proper enum values
+        from app.models.custom_user import CustomUser
+        
+        if user.role == CustomUser.Role.STUDENT:
             self.student_repository.create(profile_data_with_user)
-        elif user.role == 'professor':
+        elif user.role == CustomUser.Role.PROFESSOR:
             self.professor_repository.create(profile_data_with_user)
-        elif user.role == 'administrator':
+        elif user.role == CustomUser.Role.ADMIN:
             self.administrator_repository.create(profile_data_with_user)

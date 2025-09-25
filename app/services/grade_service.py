@@ -83,16 +83,11 @@ class GradeService:
         """
         try:
             with transaction.atomic():
-                # Check if status was changed (from view logic)
-                status_was_changed = "status" in grade_data
-
                 # Update grade via repository
                 updated_grade = self.grade_repository.update(grade, grade_data)
 
-                # Update status if not manually changed (from view logic)
-                if not status_was_changed:
-                    # This calls the model's update_status method
-                    updated_grade.update_status()
+                # Always update status automatically based on final_grade (from model logic)
+                updated_grade.update_status()
 
                 return updated_grade
 

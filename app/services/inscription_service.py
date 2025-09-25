@@ -53,17 +53,18 @@ class InscriptionService:
 
         Business logic from subject_inscribe view.
         """
+
         try:
             with transaction.atomic():
                 # Create or get inscription (from view logic)
                 inscription, created = self.subject_inscription_repository.get_or_create(
-                    student_id=student.id,
+                    student_id=student.pk,
                     subject_code=subject.code
                 )
 
                 # Ensure grade record exists (from view logic)
                 grade, grade_created = self.grade_repository.get_or_create(
-                    student_id=student.id,
+                    student_id=student.pk,
                     subject_code=subject.code
                 )
 
@@ -85,17 +86,12 @@ class InscriptionService:
         """
         try:
             with transaction.atomic():
-                # Validate eligibility: student must have REGULAR status (from view logic)
-                grade = self.grade_repository.list(
-                    filters={'student': student, 'subject': final_exam.subject}
-                    ).order_by('-id').first()
-
-                if not grade or grade.status not in ['REGULAR']:  # Grade.StatusSubject.REGULAR
-                    raise InscriptionServiceError("Solo puedes inscribirte si la materia está regular.")
+                # Validate eligibility
+                self._validate_final_exam_inscription_requirements(student, final_exam)
 
                 # Create or get inscription (from view logic)
                 inscription, created = self.final_exam_inscription_repository.get_or_create(
-                    student_id=student.id,
+                    student_id=student.pk,
                     final_exam_id=final_exam.id
                 )
 
@@ -105,6 +101,23 @@ class InscriptionService:
             if isinstance(e, InscriptionServiceError):
                 raise
             raise InscriptionServiceError(f"Failed to inscribe student to final exam: {str(e)}") from e
+
+    def _validate_final_exam_inscription_requirements(self, student, final_exam):
+        """
+        Validate that student meets requirements to inscribe to final exam.
+        
+        Business rules:
+        - Student must have REGULAR status in the subject
+        """
+        # Validate eligibility: student must have REGULAR status (from view logic)
+        grade = self.grade_repository.list(
+            filters={'student': student, 'subject': final_exam.subject}
+            ).order_by('-id').first()
+
+        # Import to use proper enum values
+        from app.models.grade import Grade
+        if not grade or grade.status != Grade.StatusSubject.REGULAR:
+            raise InscriptionServiceError("Solo puedes inscribirte si la materia está regular.")
 
     def remove_subject_inscription(self, student_id, subject_code):
         """Remove subject inscription via repository."""

@@ -69,8 +69,9 @@ class ProfessorService:
                 raise ProfessorServiceError("Final exam not found")
 
             # Validate professor is assigned to this final
-            professor_finals = self.final_exam_repository.list(filters={"professors": professor})
-            if final_exam not in professor_finals:
+            # Check if professor is in the final's professors list
+            final_professors = self.final_exam_repository.list(filters={"id": final_exam_id, "professors": professor})
+            if not final_professors.exists():
                 raise ProfessorServiceError("You are not assigned to this final exam")
 
             # Get inscriptions (from view logic)

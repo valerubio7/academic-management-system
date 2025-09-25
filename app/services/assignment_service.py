@@ -37,15 +37,17 @@ class AssignmentService:
 
         Business logic from assign_subject_professors view.
         """
+
         try:
             with transaction.atomic():
                 # Get subject
-                subject = self.subject_repository.by_code(subject_code)
+                subject = self.subject_repository.by_code_with_career(subject_code)
                 if not subject:
                     raise AssignmentServiceError(f"Subject {subject_code} not found")
 
                 # Convert to sets for comparison (from view logic)
-                selected_ids = set(selected_professor_ids)
+                # Professor IDs are strings (professor_id field), not integers
+                selected_ids = set(pid for pid in selected_professor_ids if pid)
                 # Get current professor IDs through the M2M relation (acceptable for this operation)
                 current_ids = set(subject.professors.values_list("pk", flat=True))
 
@@ -86,7 +88,8 @@ class AssignmentService:
                     raise AssignmentServiceError(f"Final exam {final_exam_id} not found")
 
                 # Convert to sets for comparison (from view logic)
-                selected_ids = set(selected_professor_ids)
+                # Professor IDs are strings (professor_id field), not integers
+                selected_ids = set(pid for pid in selected_professor_ids if pid)
                 # Get current professor IDs through the M2M relation (acceptable for this operation)
                 current_ids = set(final_exam.professors.values_list("pk", flat=True))
 

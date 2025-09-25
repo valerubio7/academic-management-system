@@ -58,7 +58,7 @@ class SubjectService:
         Business rule: Subject cannot be deleted if it has inscriptions.
         """
         # Check dependencies via repositories
-        inscriptions = self.subject_inscription_repository.list_by_subject(subject.id)
+        inscriptions = self.subject_inscription_repository.list_by_subject_id(subject.pk)
         if inscriptions.exists():
             raise SubjectServiceError(
                 "Cannot delete subject with existing inscriptions. "
@@ -75,7 +75,7 @@ class SubjectService:
     def get_subject_by_code(self, code):
         """Get subject by code via repository."""
         try:
-            return self.subject_repository.by_code(code)
+            return self.subject_repository.by_code_with_career(code)
         except Exception:
             return None
 
