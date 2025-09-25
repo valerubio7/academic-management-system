@@ -431,7 +431,7 @@ class StudentViewsTests(TestCase):
                 self.assertEqual(resp.status_code, 302)
                 self.assertEqual(resp["Location"], reverse("users:student-dashboard"))
 
-    @patch("users.views.DocxTemplate")
+    @patch("app.services.certificate_service.DocxTemplate")
     def test_download_certificate_success_returns_docx(self, mock_tpl_cls):
         # Mock DocxTemplate to avoid real file IO and docx processing
         class FakeTpl:
