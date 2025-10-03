@@ -5,7 +5,10 @@ from tempfile import TemporaryDirectory
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from app.models import Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription, SubjectInscription, Administrator, CustomUser, Professor, Student
+from app.models import (
+    Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription,
+    SubjectInscription, Administrator, CustomUser, Professor, Student
+)
 
 
 class CustomUserModelTest(TestCase):
