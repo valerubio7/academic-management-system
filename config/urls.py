@@ -25,7 +25,6 @@ urlpatterns = [
     # Move Django admin to avoid clashing with custom admin dashboard
     path('django-admin/', admin.site.urls),
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
-    path('', include('accounts.urls')),
-    # Expose user dashboards at root: /student/... /professor/... /admin/...
-    path('', include('users.urls')),
+    # App routes (includes auth, admin, student, professor)
+    path('', include('app.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  # This line serves media files during development

@@ -47,11 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    # own apps
-    'users.apps.UsersConfig',
-    'academics.apps.AcademicsConfig',
-    'inscriptions.apps.InscriptionsConfig',
-    'accounts.apps.AccountsConfig',
+    # main app
     'app.apps.AppConfig'
 ]
 
@@ -132,7 +128,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-LOGIN_URL = 'login'  # URL para la vista de inicio de sesión
+LOGIN_URL = 'app:login'  # URL para la vista de inicio de sesión
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

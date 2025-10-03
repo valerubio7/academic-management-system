@@ -110,6 +110,44 @@ class UserManagementService:
         """List all users with profiles via repository."""
         return self.user_repository.with_profiles()
 
+    def create_user_profile(self, user: Any) -> None:
+        """
+        Create role-specific profile for an existing user.
+        
+        Business rules:
+        - User must have a role assigned
+        - Creates profile with default values based on user role
+        """
+        from datetime import date
+        
+        try:
+            with transaction.atomic():
+                profile_data = {}
+                
+                # Set default values based on role
+                if user.role == user.Role.STUDENT:
+                    profile_data = {
+                        'student_id': f'STU{user.id:05d}',
+                        'enrollment_date': date.today()
+                    }
+                elif user.role == user.Role.PROFESSOR:
+                    profile_data = {
+                        'professor_id': f'PROF{user.id:05d}',
+                        'degree': 'Sin especificar',
+                        'category': 'Sin especificar',
+                        'hire_date': date.today()
+                    }
+                elif user.role == user.Role.ADMIN:
+                    profile_data = {
+                        'administrator_id': f'ADM{user.id:05d}',
+                        'position': 'Administrador',
+                        'hire_date': date.today()
+                    }
+                
+                self._create_profile_for_user(user, profile_data)
+        except Exception as e:
+            raise UserManagementServiceError(f"Failed to create user profile: {str(e)}") from e
+
     def _create_profile_for_user(self, user: Any, profile_data: Dict[str, Any]) -> None:
         """Create role-specific profile via appropriate repository."""
         profile_data_with_user = {**profile_data, 'user': user}

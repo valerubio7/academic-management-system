@@ -49,13 +49,13 @@ class AccountsViewsTests(TestCase):
         )
 
     def test_login_get_renders_form(self):
-        resp = self.client.get(reverse("login"))
+        resp = self.client.get(reverse("app:login"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, 'name="username"')
         self.assertContains(resp, 'name="password"')
 
     def test_login_invalid_credentials_shows_error(self):
-        resp = self.client.post(reverse("login"), {
+        resp = self.client.post(reverse("app:login"), {
             "username": "unknown",
             "password": "badpass",
         })
@@ -63,16 +63,16 @@ class AccountsViewsTests(TestCase):
         self.assertContains(resp, "Incorrect username or password.")
 
     def test_login_student_redirects_to_student_dashboard(self):
-        resp = self.client.post(reverse("login"), {
+        resp = self.client.post(reverse("app:login"), {
             "username": "stud1",
             "password": "pass1234",
         })
         self.assertEqual(resp.status_code, 302)
-        self.assertTrue(reverse("users:student-dashboard").endswith("/student/dashboard/"))
+        self.assertTrue(reverse("app:student-dashboard").endswith("/student/dashboard/"))
         self.assertIn("/student/dashboard/", resp["Location"])  # don't follow to avoid dashboard dependency
 
     def test_login_professor_redirects_to_professor_dashboard(self):
-        resp = self.client.post(reverse("login"), {
+        resp = self.client.post(reverse("app:login"), {
             "username": "prof1",
             "password": "pass1234",
         })
@@ -80,7 +80,7 @@ class AccountsViewsTests(TestCase):
         self.assertIn("/professor/dashboard/", resp["Location"])  # don't follow
 
     def test_login_admin_redirects_to_admin_dashboard(self):
-        resp = self.client.post(reverse("login"), {
+        resp = self.client.post(reverse("app:login"), {
             "username": "admin1",
             "password": "pass1234",
         })
@@ -89,7 +89,7 @@ class AccountsViewsTests(TestCase):
 
     def test_login_respects_next_parameter(self):
         next_url = "/some/protected/path/"
-        url = f"{reverse('login')}?next={next_url}"
+        url = f"{reverse('app:login')}?next={next_url}"
         resp = self.client.post(url, {
             "username": "stud1",
             "password": "pass1234",
@@ -100,7 +100,7 @@ class AccountsViewsTests(TestCase):
     def test_authenticated_user_visiting_login_redirects_by_role(self):
         # Student
         self.client.force_login(self.student_user)
-        resp = self.client.get(reverse("login"))
+        resp = self.client.get(reverse("app:login"))
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/student/dashboard/", resp["Location"])  # don't follow
         # Logout to isolate next check
@@ -108,19 +108,19 @@ class AccountsViewsTests(TestCase):
 
         # Professor
         self.client.force_login(self.prof_user)
-        resp = self.client.get(reverse("login"))
+        resp = self.client.get(reverse("app:login"))
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/professor/dashboard/", resp["Location"])  # don't follow
         self.client.logout()
 
         # Administrator
         self.client.force_login(self.admin_user)
-        resp = self.client.get(reverse("login"))
+        resp = self.client.get(reverse("app:login"))
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/admin/dashboard/", resp["Location"])  # don't follow
 
     def test_logout_redirects_home(self):
         self.client.force_login(self.student_user)
-        resp = self.client.get(reverse("logout"))
+        resp = self.client.get(reverse("app:logout"))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("home"))

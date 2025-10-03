@@ -181,18 +181,18 @@ class AdminViewsTests(TestCase):
 
     def test_admin_dashboard_requires_admin(self):
         # Unauthenticated -> redirect to login
-        resp = self.client.get(reverse("users:admin-dashboard"))
+        resp = self.client.get(reverse("app:admin-dashboard"))
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/login", resp["Location"])  # login redirect
 
         # Authenticated admin -> OK
         self.client.force_login(self.admin)
-        resp = self.client.get(reverse("users:admin-dashboard"))
+        resp = self.client.get(reverse("app:admin-dashboard"))
         self.assertEqual(resp.status_code, 200)
 
     def test_user_list_visible_to_admin(self):
         self.client.force_login(self.admin)
-        resp = self.client.get(reverse("users:user-list"))
+        resp = self.client.get(reverse("app:user-list"))
         self.assertEqual(resp.status_code, 200)
 
     def test_user_create_admin_role(self):
@@ -212,7 +212,7 @@ class AdminViewsTests(TestCase):
             "position": "Ops",
             "hire_date": "2021-01-01",
         }
-        resp = self.client.post(reverse("users:user-create"), data=payload)
+        resp = self.client.post(reverse("app:user-create"), data=payload)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(CustomUser.objects.filter(username="newadmin").exists())
         created = CustomUser.objects.get(username="newadmin")
@@ -233,18 +233,18 @@ class AdminViewsTests(TestCase):
             "established_date": "2000-01-01",
             "description": "desc",
         }
-        resp = self.client.post(reverse("users:faculty-create"), data=create_payload)
+        resp = self.client.post(reverse("app:faculty-create"), data=create_payload)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Faculty.objects.filter(code="FX").exists())
 
         # Edit
         edit_payload = create_payload | {"name": "Facultad X Edit"}
-        resp = self.client.post(reverse("users:faculty-edit", args=["FX"]), data=edit_payload)
+        resp = self.client.post(reverse("app:faculty-edit", args=["FX"]), data=edit_payload)
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Faculty.objects.get(code="FX").name, "Facultad X Edit")
 
         # Delete
-        resp = self.client.post(reverse("users:faculty-delete", args=["FX"]))
+        resp = self.client.post(reverse("app:faculty-delete", args=["FX"]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(Faculty.objects.filter(code="FX").exists())
 
@@ -260,18 +260,18 @@ class AdminViewsTests(TestCase):
             "duration_years": 4,
             "description": "desc",
         }
-        resp = self.client.post(reverse("users:career-create"), data=create_payload)
+        resp = self.client.post(reverse("app:career-create"), data=create_payload)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Career.objects.filter(code="CY").exists())
 
         # Edit
         edit_payload = create_payload | {"name": "Carrera Y Edit"}
-        resp = self.client.post(reverse("users:career-edit", args=["CY"]), data=edit_payload)
+        resp = self.client.post(reverse("app:career-edit", args=["CY"]), data=edit_payload)
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Career.objects.get(code="CY").name, "Carrera Y Edit")
 
         # Delete
-        resp = self.client.post(reverse("users:career-delete", args=["CY"]))
+        resp = self.client.post(reverse("app:career-delete", args=["CY"]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(Career.objects.filter(code="CY").exists())
 
@@ -290,20 +290,20 @@ class AdminViewsTests(TestCase):
             "semanal_hours": 6,
             "description": "desc",
         }
-        resp = self.client.post(reverse("users:subject-create"), data=payload)
+        resp = self.client.post(reverse("app:subject-create"), data=payload)
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(Subject.objects.filter(code="ALG2").exists())
 
         # Edit
         payload_edit = payload | {"name": "Álgebra I"}
-        resp = self.client.post(reverse("users:subject-edit", args=["ALG2"]), data=payload_edit)
+        resp = self.client.post(reverse("app:subject-edit", args=["ALG2"]), data=payload_edit)
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Subject.objects.get(code="ALG2").name, "Álgebra I")
 
         # Assign professors
         prof_user, prof = make_professor("profX", "55555555")
         resp = self.client.post(
-            reverse("users:assign-subject-professors", args=[subj.code]),
+            reverse("app:assign-subject-professors", args=[subj.code]),
             data={"professors": [str(prof.pk)]},
         )
         self.assertEqual(resp.status_code, 302)
@@ -311,7 +311,7 @@ class AdminViewsTests(TestCase):
         self.assertIn(prof, subj.professors.all())
 
         # Delete
-        resp = self.client.post(reverse("users:subject-delete", args=["ALG2"]))
+        resp = self.client.post(reverse("app:subject-delete", args=["ALG2"]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(Subject.objects.filter(code="ALG2").exists())
 
@@ -327,13 +327,13 @@ class AdminViewsTests(TestCase):
             "call_number": 1,
             "notes": "1er llamado",
         }
-        resp = self.client.post(reverse("users:final-create"), data=payload)
+        resp = self.client.post(reverse("app:final-create"), data=payload)
         self.assertEqual(resp.status_code, 302)
         final = FinalExam.objects.latest("id")
 
         # Edit
         payload_edit = payload | {"location": "Aula 2"}
-        resp = self.client.post(reverse("users:final-edit", args=[final.id]), data=payload_edit)
+        resp = self.client.post(reverse("app:final-edit", args=[final.id]), data=payload_edit)
         self.assertEqual(resp.status_code, 302)
         final.refresh_from_db()
         self.assertEqual(final.location, "Aula 2")
@@ -341,14 +341,14 @@ class AdminViewsTests(TestCase):
         # Assign professors
         _, prof = make_professor("profY", "66666666")
         resp = self.client.post(
-            reverse("users:assign-final-professors", args=[final.id]), data={"professors": [str(prof.pk)]}
+            reverse("app:assign-final-professors", args=[final.id]), data={"professors": [str(prof.pk)]}
         )
         self.assertEqual(resp.status_code, 302)
         final.refresh_from_db()
         self.assertIn(prof, final.professors.all())
 
         # Delete
-        resp = self.client.post(reverse("users:final-delete", args=[final.id]))
+        resp = self.client.post(reverse("app:final-delete", args=[final.id]))
         self.assertEqual(resp.status_code, 302)
         self.assertFalse(FinalExam.objects.filter(id=final.id).exists())
 
@@ -367,22 +367,22 @@ class StudentViewsTests(TestCase):
             dni="19999999",
         )
         self.client.force_login(user)
-        resp = self.client.get(reverse("users:student-dashboard"))
+        resp = self.client.get(reverse("app:student-dashboard"))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("home"))
 
     def test_subject_inscribe_flow(self):
         self.client.force_login(self.student_user)
         # GET confirm
-        resp = self.client.get(reverse("users:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.get(reverse("app:subject-inscribe", args=[self.subject.code]))
         self.assertEqual(resp.status_code, 200)
         # POST create inscription and grade
-        resp = self.client.post(reverse("users:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.post(reverse("app:subject-inscribe", args=[self.subject.code]))
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(SubjectInscription.objects.filter(student=self.student, subject=self.subject).exists())
         self.assertTrue(Grade.objects.filter(student=self.student, subject=self.subject).exists())
         # Second POST idempotent
-        resp = self.client.post(reverse("users:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.post(reverse("app:subject-inscribe", args=[self.subject.code]))
         self.assertEqual(resp.status_code, 302)
 
     def test_final_exam_inscribe_requires_regular(self):
@@ -395,19 +395,19 @@ class StudentViewsTests(TestCase):
             call_number=1,
         )
         # No grade -> error message and redirect
-        resp = self.client.get(reverse("users:final-inscribe", args=[final.id]))
+        resp = self.client.get(reverse("app:final-inscribe", args=[final.id]))
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("users:student-dashboard"))
+        self.assertEqual(resp["Location"], reverse("app:student-dashboard"))
 
         # Make regular and POST
         Grade.objects.create(student=self.student, subject=self.subject, status=Grade.StatusSubject.REGULAR)
-        resp = self.client.post(reverse("users:final-inscribe", args=[final.id]))
+        resp = self.client.post(reverse("app:final-inscribe", args=[final.id]))
         self.assertEqual(resp.status_code, 302)
         self.assertTrue(FinalExamInscription.objects.filter(student=self.student, final_exam=final).exists())
 
     def test_download_certificate_requires_login_and_student_profile(self):
         # Unauthenticated -> redirect to login
-        resp = self.client.get(reverse("users:student-regular-certificate"))
+        resp = self.client.get(reverse("app:student-regular-certificate"))
         self.assertEqual(resp.status_code, 302)
         self.assertIn("/login", resp["Location"])  # login redirect
 
@@ -419,7 +419,7 @@ class StudentViewsTests(TestCase):
             dni="17777777",
         )
         self.client.force_login(no_profile_user)
-        resp = self.client.get(reverse("users:student-regular-certificate"))
+        resp = self.client.get(reverse("app:student-regular-certificate"))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("home"))
 
@@ -430,9 +430,9 @@ class StudentViewsTests(TestCase):
         # Use a temporary BASE_DIR with no template file
         with TemporaryDirectory() as tmpdir:
             with override_settings(BASE_DIR=tmpdir):
-                resp = self.client.get(reverse("users:student-regular-certificate"))
+                resp = self.client.get(reverse("app:student-regular-certificate"))
                 self.assertEqual(resp.status_code, 302)
-                self.assertEqual(resp["Location"], reverse("users:student-dashboard"))
+                self.assertEqual(resp["Location"], reverse("app:student-dashboard"))
 
     @patch("app.services.certificate_service.DocxTemplate")
     def test_download_certificate_success_returns_docx(self, mock_tpl_cls):
@@ -452,7 +452,7 @@ class StudentViewsTests(TestCase):
 
         # Ensure logged in as valid student
         self.client.force_login(self.student_user)
-        resp = self.client.get(reverse("users:student-regular-certificate"))
+        resp = self.client.get(reverse("app:student-regular-certificate"))
 
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -484,14 +484,14 @@ class ProfessorViewsTests(TestCase):
             dni="18888888",
         )
         self.client.force_login(user)
-        resp = self.client.get(reverse("users:professor-dashboard"))
+        resp = self.client.get(reverse("app:professor-dashboard"))
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("home"))
 
     def test_grade_list_creates_missing_grades(self):
         SubjectInscription.objects.create(student=self.student, subject=self.subject)
         self.client.force_login(self.prof_user)
-        resp = self.client.get(reverse("users:grade-list", args=[self.subject.code]))
+        resp = self.client.get(reverse("app:grade-list", args=[self.subject.code]))
         self.assertEqual(resp.status_code, 200)
         # Grade should be auto-created
         self.assertTrue(Grade.objects.filter(student=self.student, subject=self.subject).exists())
@@ -506,13 +506,13 @@ class ProfessorViewsTests(TestCase):
 
         self.client.force_login(self.prof_user)
         # Cannot edit not assigned
-        resp = self.client.post(reverse("users:grade-edit", args=[grade_other.id]), data={"final_grade": 7})
+        resp = self.client.post(reverse("app:grade-edit", args=[grade_other.id]), data={"final_grade": 7})
         self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("users:professor-dashboard"))
+        self.assertEqual(resp["Location"], reverse("app:professor-dashboard"))
 
         # Can edit assigned and update_status auto-applies
         resp = self.client.post(
-            reverse("users:grade-edit", args=[grade.id]),
+            reverse("app:grade-edit", args=[grade.id]),
             data={"promotion_grade": 8, "final_grade": 7, "status": Grade.StatusSubject.REGULAR},
         )
         self.assertEqual(resp.status_code, 302)
@@ -533,5 +533,5 @@ class ProfessorViewsTests(TestCase):
         self.prof.final_exams.add(final)
         FinalExamInscription.objects.create(student=self.student, final_exam=final)
         self.client.force_login(self.prof_user)
-        resp = self.client.get(reverse("users:professor-final-inscriptions", args=[final.id]))
+        resp = self.client.get(reverse("app:professor-final-inscriptions", args=[final.id]))
         self.assertEqual(resp.status_code, 200)
