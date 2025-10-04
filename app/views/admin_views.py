@@ -107,12 +107,12 @@ def user_edit(request, pk):
         profile_form = None
         
         # Get the appropriate profile form based on user role
-        if user.role == CustomUser.Role.STUDENT and hasattr(user, 'student_profile'):
-            profile_form = StudentProfileForm(request.POST, instance=user.student_profile)
-        elif user.role == CustomUser.Role.PROFESSOR and hasattr(user, 'professor_profile'):
-            profile_form = ProfessorProfileForm(request.POST, instance=user.professor_profile)
-        elif user.role == CustomUser.Role.ADMIN and hasattr(user, 'administrator_profile'):
-            profile_form = AdministratorProfileForm(request.POST, instance=user.administrator_profile)
+        if user.role == CustomUser.Role.STUDENT and hasattr(user, 'student'):
+            profile_form = StudentProfileForm(request.POST, instance=user.student)
+        elif user.role == CustomUser.Role.PROFESSOR and hasattr(user, 'professor'):
+            profile_form = ProfessorProfileForm(request.POST, instance=user.professor)
+        elif user.role == CustomUser.Role.ADMIN and hasattr(user, 'administrator'):
+            profile_form = AdministratorProfileForm(request.POST, instance=user.administrator)
         
         if user_form.is_valid() and (profile_form is None or profile_form.is_valid()):
             user_form.save()
@@ -125,12 +125,12 @@ def user_edit(request, pk):
         profile_form = None
         
         # Get the appropriate profile form based on user role
-        if user.role == CustomUser.Role.STUDENT and hasattr(user, 'student_profile'):
-            profile_form = StudentProfileForm(instance=user.student_profile)
-        elif user.role == CustomUser.Role.PROFESSOR and hasattr(user, 'professor_profile'):
-            profile_form = ProfessorProfileForm(instance=user.professor_profile)
-        elif user.role == CustomUser.Role.ADMIN and hasattr(user, 'administrator_profile'):
-            profile_form = AdministratorProfileForm(instance=user.administrator_profile)
+        if user.role == CustomUser.Role.STUDENT and hasattr(user, 'student'):
+            profile_form = StudentProfileForm(instance=user.student)
+        elif user.role == CustomUser.Role.PROFESSOR and hasattr(user, 'professor'):
+            profile_form = ProfessorProfileForm(instance=user.professor)
+        elif user.role == CustomUser.Role.ADMIN and hasattr(user, 'administrator'):
+            profile_form = AdministratorProfileForm(instance=user.administrator)
     
     context = {
         'form': user_form,
@@ -161,7 +161,7 @@ def user_delete(request, pk):
         messages.success(request, f"Usuario {username} eliminado exitosamente.")
         return redirect('app:user-list')
     
-    return render(request, "app/admin/user_confirm_delete.html", {'user': user})
+    return render(request, "app/admin/confirm_delete.html", {'object': user, 'back': 'app:user-list'})
 
 
 # Faculty CRUD views
@@ -170,7 +170,7 @@ def user_delete(request, pk):
 def faculty_list(request):
     """List all faculties."""
     repository = FacultyRepository()
-    faculties = repository.get_all()
+    faculties = repository.list_all()
     return render(request, "app/admin/faculty_list.html", {'faculties': faculties})
 
 
@@ -220,7 +220,7 @@ def faculty_delete(request, code):
         messages.success(request, f"Facultad {name} eliminada exitosamente.")
         return redirect('app:faculty-list')
     
-    return render(request, "app/admin/faculty_confirm_delete.html", {'faculty': faculty})
+    return render(request, "app/admin/confirm_delete.html", {'object': faculty, 'back': 'app:faculty-list'})
 
 
 # Career CRUD views
@@ -229,7 +229,7 @@ def faculty_delete(request, code):
 def career_list(request):
     """List all careers."""
     repository = CareerRepository()
-    careers = repository.get_all()
+    careers = repository.list_all()
     return render(request, "app/admin/career_list.html", {'careers': careers})
 
 
@@ -279,7 +279,7 @@ def career_delete(request, code):
         messages.success(request, f"Carrera {name} eliminada exitosamente.")
         return redirect('app:career-list')
     
-    return render(request, "app/admin/career_confirm_delete.html", {'career': career})
+    return render(request, "app/admin/confirm_delete.html", {'object': career, 'back': 'app:career-list'})
 
 
 # Subject CRUD views
@@ -288,7 +288,7 @@ def career_delete(request, code):
 def subject_list(request):
     """List all subjects."""
     repository = SubjectRepository()
-    subjects = repository.get_all()
+    subjects = repository.list_all_with_career()
     return render(request, "app/admin/subject_list.html", {'subjects': subjects})
 
 
@@ -338,7 +338,7 @@ def subject_delete(request, code):
         messages.success(request, f"Materia {name} eliminada exitosamente.")
         return redirect('app:subject-list')
     
-    return render(request, "app/admin/subject_confirm_delete.html", {'subject': subject})
+    return render(request, "app/admin/confirm_delete.html", {'object': subject, 'back': 'app:subject-list'})
 
 
 @login_required
@@ -362,7 +362,7 @@ def assign_subject_professors(request, code):
         'professors': professors,
         'assigned_professors': assigned_professors,
     }
-    return render(request, "app/admin/assign_subject_professors.html", context)
+    return render(request, "app/admin/assign_professors.html", context)
 
 
 # Final Exam CRUD views
@@ -371,7 +371,7 @@ def assign_subject_professors(request, code):
 def final_list(request):
     """List all final exams."""
     repository = FinalExamRepository()
-    finals = repository.get_all()
+    finals = repository.list_all_with_subject()
     return render(request, "app/admin/final_list.html", {'finals': finals})
 
 
@@ -420,7 +420,7 @@ def final_delete(request, pk):
         messages.success(request, f"Examen final eliminado exitosamente.")
         return redirect('app:final-list')
     
-    return render(request, "app/admin/final_confirm_delete.html", {'final': final})
+    return render(request, "app/admin/confirm_delete.html", {'object': final, 'back': 'app:final-list'})
 
 
 @login_required
@@ -444,4 +444,4 @@ def assign_final_professors(request, pk):
         'professors': professors,
         'assigned_professors': assigned_professors,
     }
-    return render(request, "app/admin/assign_final_professors.html", context)
+    return render(request, "app/admin/assign_professors.html", context)

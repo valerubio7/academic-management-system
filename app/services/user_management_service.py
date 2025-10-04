@@ -128,13 +128,14 @@ class UserManagementService:
                 if user.role == user.Role.STUDENT:
                     profile_data = {
                         'student_id': f'STU{user.id:05d}',
-                        'enrollment_date': date.today()
+                        'enrollment_date': date.today(),
+                        'career': None  # Career is optional and can be set later
                     }
                 elif user.role == user.Role.PROFESSOR:
                     profile_data = {
                         'professor_id': f'PROF{user.id:05d}',
                         'degree': 'Sin especificar',
-                        'category': 'Sin especificar',
+                        'category': 'auxiliar',  # Default to auxiliar category
                         'hire_date': date.today()
                     }
                 elif user.role == user.Role.ADMIN:

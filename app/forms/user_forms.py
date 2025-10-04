@@ -109,7 +109,12 @@ class StudentProfileForm(forms.ModelForm):
     Fields:
         student_id, career, enrollment_date.
     """
-    career = forms.ModelChoiceField(queryset=Career.objects.all(), label="Carrera")
+    career = forms.ModelChoiceField(
+        queryset=Career.objects.all(),
+        label="Carrera",
+        required=False,
+        empty_label="(Sin carrera asignada)"
+    )
 
     class Meta:
         model = Student
@@ -132,6 +137,9 @@ class ProfessorProfileForm(forms.ModelForm):
             'degree': 'Título',
             'category': 'Categoría',
             'hire_date': 'Fecha de Alta'
+        }
+        widgets = {
+            'category': forms.Select(choices=Professor.Category.choices)
         }
 
 
