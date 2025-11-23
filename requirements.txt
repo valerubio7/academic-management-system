@@ -4,6 +4,9 @@ Django==5.2.3
 # PostgreSQL Database Adapter
 psycopg2-binary==2.9.9
 
+# Database URL Parser for Render
+dj-database-url==2.1.0
+
 # WSGI HTTP Server for Production
 gunicorn==21.2.0
 
