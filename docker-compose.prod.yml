@@ -1,0 +1,137 @@
+# =================================================================
+# PRODUCTION DOCKER COMPOSE CONFIGURATION
+# =================================================================
+# 
+# This configuration is optimized for production deployment.
+# Key differences from development (docker-compose.yml):
+# - No source code volume mounting
+# - Database port not exposed to host
+# - Uses Gunicorn instead of Django dev server
+# - Includes health checks
+# - Production-optimized restart policies
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+#   docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
+#
+# =================================================================
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    volumes: 
+      - db_data:/var/lib/postgresql/data
+    environment: 
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # Do NOT expose port in production - keep database internal
+    expose:
+      - "5432"
+    networks:
+      - AMS_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ams:prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # No volume mounting in production - code is baked into image
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST:-db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      # Email configuration (optional)
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@example.com}
+      # Cache configuration (optional)
+      REDIS_URL: ${REDIS_URL:-}
+      # CSRF trusted origins for HTTPS
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - AMS_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      # Only mount necessary directories for persistent data
+      - media_data:/app/media
+      - static_data:/app/staticfiles
+      - logs_data:/app/logs
+
+  # Optional: Redis for caching and sessions (uncomment to enable)
+  # redis:
+  #   image: redis:7-alpine
+  #   restart: unless-stopped
+  #   expose:
+  #     - "6379"
+  #   networks:
+  #     - AMS_network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #   volumes:
+  #     - redis_data:/data
+
+  # Optional: Nginx reverse proxy (recommended for production)
+  # nginx:
+  #   image: nginx:alpine
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     - static_data:/app/staticfiles:ro
+  #     - media_data:/app/media:ro
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - AMS_network
+
+networks:
+  AMS_network:
+    name: AMS_network_prod
+    driver: bridge
+
+volumes:
+  db_data:
+    driver: local
+  media_data:
+    driver: local
+  static_data:
+    driver: local
+  logs_data:
+    driver: local
+  # redis_data:
+  #   driver: local

@@ -139,5 +139,5 @@ pyvenv.cfg
 # add vscode workspace settings
 *.code-workspace
 
-# add migration files
-migrations/
+# add migration cache files (but keep migration files!)
+**/migrations/__pycache__/

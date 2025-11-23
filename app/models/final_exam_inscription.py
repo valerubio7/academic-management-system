@@ -15,8 +15,13 @@ class FinalExamInscription(models.Model):
     Meta:
         unique_together: Ensures a student cannot enroll in the same final exam twice.
     """
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='final_exam_inscriptions')
-    final_exam = models.ForeignKey(FinalExam, on_delete=models.CASCADE, related_name='final_exam_inscriptions')
+
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="final_exam_inscriptions"
+    )
+    final_exam = models.ForeignKey(
+        FinalExam, on_delete=models.CASCADE, related_name="final_exam_inscriptions"
+    )
     inscription_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
@@ -24,4 +29,9 @@ class FinalExamInscription(models.Model):
         return f"{self.student.user.username} - {self.final_exam.subject.name} ({self.inscription_date})"
 
     class Meta:
-        unique_together = ('student', 'final_exam')
+        unique_together = ("student", "final_exam")
+        indexes = [
+            models.Index(fields=["student"]),
+            models.Index(fields=["final_exam"]),
+            models.Index(fields=["inscription_date"]),
+        ]

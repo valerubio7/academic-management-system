@@ -3,7 +3,7 @@
 Sections:
 - Auth: login/logout routes.
 - Admin: CRUD for users, faculties, careers, subjects, finals, and assignments.
-- Student: dashboard, subject/final inscriptions, certificates.
+- Student: dashboard, subject/final inscriptions.
 - Professor: dashboard, grade management, final inscriptions.
 
 Notes:
@@ -17,14 +17,11 @@ app_name = "app"
 
 urlpatterns = [
     # Authentication routes
-    path('', include('app.auth_urls')),
-    
+    path("", include("app.auth_urls")),
     # Admin routes
-    path('admin/', include('app.admin_urls')),
-    
+    path("admin/", include("app.admin_urls")),
     # Student routes
-    path('student/', include('app.student_urls')),
-    
+    path("student/", include("app.student_urls")),
     # Professor routes
-    path('professor/', include('app.professor_urls')),
+    path("professor/", include("app.professor_urls")),
 ]

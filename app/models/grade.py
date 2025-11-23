@@ -25,20 +25,36 @@ class Grade(models.Model):
 
     class StatusSubject(models.TextChoices):
         """Academic status of the student for the subject."""
-        FREE = 'free', 'Free'
-        REGULAR = 'regular', 'Regular'
-        PROMOTED = 'promoted', 'Promoted'
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='grades')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='grades')
-    promotion_grade = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
-    status = models.CharField(max_length=10, choices=StatusSubject.choices, default=StatusSubject.REGULAR)
-    final_grade = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
+        FREE = "free", "Free"
+        REGULAR = "regular", "Regular"
+        PROMOTED = "promoted", "Promoted"
+
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="grades"
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name="grades"
+    )
+    promotion_grade = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True
+    )
+    status = models.CharField(
+        max_length=10, choices=StatusSubject.choices, default=StatusSubject.REGULAR
+    )
+    final_grade = models.DecimalField(
+        max_digits=5, decimal_places=2, blank=True, null=True
+    )
     last_updated = models.DateTimeField(auto_now=True)
     notes = models.TextField(blank=True, null=True)
 
     class Meta:
-        unique_together = ('student', 'subject')
+        unique_together = ("student", "subject")
+        indexes = [
+            models.Index(fields=["student", "subject"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["student", "status"]),
+        ]
 
     def __str__(self):
         return f"{self.student.user.username} - {self.subject.name} ({self.status})"

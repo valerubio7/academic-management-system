@@ -1,6 +1,29 @@
-asgiref==3.8.1
+# Django Framework
 Django==5.2.3
-psycopg2-binary==2.9.10
-sqlparse==0.5.3
-python-dotenv==1.1.1
-docxtpl==0.18.0
+
+# PostgreSQL Database Adapter
+psycopg2-binary==2.9.9
+
+# WSGI HTTP Server for Production
+gunicorn==21.2.0
+
+# Static Files Serving for Production
+whitenoise==6.6.0
+
+# Environment Variables Management
+python-dotenv==1.0.0
+
+# Optional but Recommended for Production
+
+# Redis Cache Backend (uncomment if using Redis)
+# django-redis==5.4.0
+# redis==5.0.1
+
+# Security & Performance
+django-ratelimit==4.1.0
+
+# Monitoring & Error Tracking (uncomment if using Sentry)
+# sentry-sdk==1.40.0
+
+# Image Processing (if needed for media files)
+# Pillow==10.1.0

@@ -6,96 +6,105 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from app.models import (
-    Career, Faculty, FinalExam, Grade, Subject, FinalExamInscription,
-    SubjectInscription, Administrator, CustomUser, Professor, Student
+    Career,
+    Faculty,
+    FinalExam,
+    Grade,
+    Subject,
+    FinalExamInscription,
+    SubjectInscription,
+    Administrator,
+    CustomUser,
+    Professor,
+    Student,
 )
 
 
 class CustomUserModelTest(TestCase):
     def test_create_user(self):
         user = CustomUser.objects.create_user(
-            username='testuser',
-            password='testpass',
+            username="testuser",
+            password="testpass",
             role=CustomUser.Role.STUDENT,
-            dni='12345678'
+            dni="12345678",
         )
-        self.assertEqual(user.username, 'testuser')
+        self.assertEqual(user.username, "testuser")
         self.assertEqual(user.role, CustomUser.Role.STUDENT)
-        self.assertEqual(user.dni, '12345678')
+        self.assertEqual(user.dni, "12345678")
 
 
 class StudentModelTest(TestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(
-            username='student1',
-            password='testpass',
+            username="student1",
+            password="testpass",
             role=CustomUser.Role.STUDENT,
-            dni='87654321'
+            dni="87654321",
         )
         self.faculty = Faculty.objects.create(
-            code='F1',
-            name='Facultad de Ingeniería',
-            dean='Decano Ejemplo',
-            established_date='1950-01-01'
+            code="F1",
+            name="Facultad de Ingeniería",
+            dean="Decano Ejemplo",
+            established_date="1950-01-01",
         )
         self.career = Career.objects.create(
-            name='Ingeniería',
-            code='ING',
-            faculty_id='F1',
-            director='Director',
-            duration_years=5
+            name="Ingeniería",
+            code="ING",
+            faculty_id="F1",
+            director="Director",
+            duration_years=5,
         )
 
     def test_create_student(self):
         student = Student.objects.create(
-            student_id='S1',
+            student_id="S1",
             user=self.user,
             career=self.career,
-            enrollment_date='2022-01-01'
+            enrollment_date="2022-01-01",
         )
-        self.assertEqual(student.user.username, 'student1')
-        self.assertEqual(student.career.name, 'Ingeniería')
+        self.assertEqual(student.user.username, "student1")
+        self.assertEqual(student.career.name, "Ingeniería")
 
 
 class ProfessorModelTest(TestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(
-            username='prof1',
-            password='testpass',
+            username="prof1",
+            password="testpass",
             role=CustomUser.Role.PROFESSOR,
-            dni='11223344'
+            dni="11223344",
         )
 
     def test_create_professor(self):
         professor = Professor.objects.create(
-            professor_id='P1',
+            professor_id="P1",
             user=self.user,
-            degree='PhD',
-            hire_date='2020-01-01',
-            category=Professor.Category.TITULAR
+            degree="PhD",
+            hire_date="2020-01-01",
+            category=Professor.Category.TITULAR,
         )
-        self.assertEqual(professor.user.username, 'prof1')
+        self.assertEqual(professor.user.username, "prof1")
         self.assertEqual(professor.category, Professor.Category.TITULAR)
 
 
 class AdministratorModelTest(TestCase):
     def setUp(self):
         self.user = CustomUser.objects.create_user(
-            username='admin1',
-            password='testpass',
+            username="admin1",
+            password="testpass",
             role=CustomUser.Role.ADMIN,
-            dni='99887766'
+            dni="99887766",
         )
 
     def test_create_administrator(self):
         admin = Administrator.objects.create(
-            administrator_id='A1',
+            administrator_id="A1",
             user=self.user,
-            position='Manager',
-            hire_date='2021-01-01'
+            position="Manager",
+            hire_date="2021-01-01",
         )
-        self.assertEqual(admin.user.username, 'admin1')
-        self.assertEqual(admin.position, 'Manager')
+        self.assertEqual(admin.user.username, "admin1")
+        self.assertEqual(admin.position, "Manager")
 
 
 def make_admin(username="admin", dni="90000000"):
@@ -106,7 +115,10 @@ def make_admin(username="admin", dni="90000000"):
         dni=dni,
     )
     Administrator.objects.create(
-        administrator_id=f"A-{dni}", user=user, position="Mgr", hire_date=date(2020, 1, 1)
+        administrator_id=f"A-{dni}",
+        user=user,
+        position="Mgr",
+        hire_date=date(2020, 1, 1),
     )
     return user
 
@@ -128,7 +140,11 @@ def make_faculty(code="F1"):
 def make_career(code="ING", faculty=None):
     faculty = faculty or make_faculty()
     return Career.objects.create(
-        name="Ingeniería", code=code, faculty=faculty, director="Director", duration_years=5
+        name="Ingeniería",
+        code=code,
+        faculty=faculty,
+        director="Director",
+        duration_years=5,
     )
 
 
@@ -153,7 +169,10 @@ def make_student(username="stud", dni="10000001", career=None):
         dni=dni,
     )
     student = Student.objects.create(
-        student_id=f"S-{dni}", user=user, career=career or make_career(), enrollment_date=date(2020, 1, 1)
+        student_id=f"S-{dni}",
+        user=user,
+        career=career or make_career(),
+        enrollment_date=date(2020, 1, 1),
     )
     return user, student
 
@@ -239,7 +258,9 @@ class AdminViewsTests(TestCase):
 
         # Edit
         edit_payload = create_payload | {"name": "Facultad X Edit"}
-        resp = self.client.post(reverse("app:faculty-edit", args=["FX"]), data=edit_payload)
+        resp = self.client.post(
+            reverse("app:faculty-edit", args=["FX"]), data=edit_payload
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Faculty.objects.get(code="FX").name, "Facultad X Edit")
 
@@ -266,7 +287,9 @@ class AdminViewsTests(TestCase):
 
         # Edit
         edit_payload = create_payload | {"name": "Carrera Y Edit"}
-        resp = self.client.post(reverse("app:career-edit", args=["CY"]), data=edit_payload)
+        resp = self.client.post(
+            reverse("app:career-edit", args=["CY"]), data=edit_payload
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Career.objects.get(code="CY").name, "Carrera Y Edit")
 
@@ -296,7 +319,9 @@ class AdminViewsTests(TestCase):
 
         # Edit
         payload_edit = payload | {"name": "Álgebra I"}
-        resp = self.client.post(reverse("app:subject-edit", args=["ALG2"]), data=payload_edit)
+        resp = self.client.post(
+            reverse("app:subject-edit", args=["ALG2"]), data=payload_edit
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(Subject.objects.get(code="ALG2").name, "Álgebra I")
 
@@ -333,7 +358,9 @@ class AdminViewsTests(TestCase):
 
         # Edit
         payload_edit = payload | {"location": "Aula 2"}
-        resp = self.client.post(reverse("app:final-edit", args=[final.id]), data=payload_edit)
+        resp = self.client.post(
+            reverse("app:final-edit", args=[final.id]), data=payload_edit
+        )
         self.assertEqual(resp.status_code, 302)
         final.refresh_from_db()
         self.assertEqual(final.location, "Aula 2")
@@ -341,7 +368,8 @@ class AdminViewsTests(TestCase):
         # Assign professors
         _, prof = make_professor("profY", "66666666")
         resp = self.client.post(
-            reverse("app:assign-final-professors", args=[final.id]), data={"professors": [str(prof.pk)]}
+            reverse("app:assign-final-professors", args=[final.id]),
+            data={"professors": [str(prof.pk)]},
         )
         self.assertEqual(resp.status_code, 302)
         final.refresh_from_db()
@@ -374,15 +402,27 @@ class StudentViewsTests(TestCase):
     def test_subject_inscribe_flow(self):
         self.client.force_login(self.student_user)
         # GET confirm
-        resp = self.client.get(reverse("app:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.get(
+            reverse("app:subject-inscribe", args=[self.subject.code])
+        )
         self.assertEqual(resp.status_code, 200)
         # POST create inscription and grade
-        resp = self.client.post(reverse("app:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.post(
+            reverse("app:subject-inscribe", args=[self.subject.code])
+        )
         self.assertEqual(resp.status_code, 302)
-        self.assertTrue(SubjectInscription.objects.filter(student=self.student, subject=self.subject).exists())
-        self.assertTrue(Grade.objects.filter(student=self.student, subject=self.subject).exists())
+        self.assertTrue(
+            SubjectInscription.objects.filter(
+                student=self.student, subject=self.subject
+            ).exists()
+        )
+        self.assertTrue(
+            Grade.objects.filter(student=self.student, subject=self.subject).exists()
+        )
         # Second POST idempotent
-        resp = self.client.post(reverse("app:subject-inscribe", args=[self.subject.code]))
+        resp = self.client.post(
+            reverse("app:subject-inscribe", args=[self.subject.code])
+        )
         self.assertEqual(resp.status_code, 302)
 
     def test_final_exam_inscribe_requires_regular(self):
@@ -400,72 +440,18 @@ class StudentViewsTests(TestCase):
         self.assertEqual(resp["Location"], reverse("app:student-dashboard"))
 
         # Make regular and POST
-        Grade.objects.create(student=self.student, subject=self.subject, status=Grade.StatusSubject.REGULAR)
+        Grade.objects.create(
+            student=self.student,
+            subject=self.subject,
+            status=Grade.StatusSubject.REGULAR,
+        )
         resp = self.client.post(reverse("app:final-inscribe", args=[final.id]))
         self.assertEqual(resp.status_code, 302)
-        self.assertTrue(FinalExamInscription.objects.filter(student=self.student, final_exam=final).exists())
-
-    def test_download_certificate_requires_login_and_student_profile(self):
-        # Unauthenticated -> redirect to login
-        resp = self.client.get(reverse("app:student-regular-certificate"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertIn("/login", resp["Location"])  # login redirect
-
-        # Auth student without linked Student profile -> redirect home
-        no_profile_user = CustomUser.objects.create_user(
-            username="stud_noprofile",
-            password="pass1234",
-            role=CustomUser.Role.STUDENT,
-            dni="17777777",
+        self.assertTrue(
+            FinalExamInscription.objects.filter(
+                student=self.student, final_exam=final
+            ).exists()
         )
-        self.client.force_login(no_profile_user)
-        resp = self.client.get(reverse("app:student-regular-certificate"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("home"))
-
-    def test_download_certificate_missing_template_redirects(self):
-        # Force login a valid student
-        self.client.force_login(self.student_user)
-
-        # Use a temporary BASE_DIR with no template file
-        with TemporaryDirectory() as tmpdir:
-            with override_settings(BASE_DIR=tmpdir):
-                resp = self.client.get(reverse("app:student-regular-certificate"))
-                self.assertEqual(resp.status_code, 302)
-                self.assertEqual(resp["Location"], reverse("app:student-dashboard"))
-
-    @patch("app.services.certificate_service.DocxTemplate")
-    def test_download_certificate_success_returns_docx(self, mock_tpl_cls):
-        # Mock DocxTemplate to avoid real file IO and docx processing
-        class FakeTpl:
-            def __init__(self, *_args, **_kwargs):
-                pass
-
-            def render(self, _context):
-                return None
-
-            def save(self, dest):
-                # Write some bytes to the provided BytesIO
-                dest.write(b"PK\x03\x04fake-docx-content")
-
-        mock_tpl_cls.return_value = FakeTpl()
-
-        # Ensure logged in as valid student
-        self.client.force_login(self.student_user)
-        resp = self.client.get(reverse("app:student-regular-certificate"))
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertEqual(
-            resp["Content-Type"],
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
-        content_disp = resp["Content-Disposition"]
-        ok = (
-            "attachment; filename=\"certificado-regular-" in content_disp
-            or "attachment; filename=\"certificado-regular-stud-" in content_disp
-        )
-        self.assertTrue(ok)
-        self.assertTrue(len(resp.content) > 0)
 
 
 class ProfessorViewsTests(TestCase):
@@ -494,7 +480,9 @@ class ProfessorViewsTests(TestCase):
         resp = self.client.get(reverse("app:grade-list", args=[self.subject.code]))
         self.assertEqual(resp.status_code, 200)
         # Grade should be auto-created
-        self.assertTrue(Grade.objects.filter(student=self.student, subject=self.subject).exists())
+        self.assertTrue(
+            Grade.objects.filter(student=self.student, subject=self.subject).exists()
+        )
 
     def test_grade_edit_permissions_and_update(self):
         # Create grade and inscription
@@ -506,19 +494,25 @@ class ProfessorViewsTests(TestCase):
 
         self.client.force_login(self.prof_user)
         # Cannot edit not assigned
-        resp = self.client.post(reverse("app:grade-edit", args=[grade_other.id]), data={"final_grade": 7})
+        resp = self.client.post(
+            reverse("app:grade-edit", args=[grade_other.id]), data={"final_grade": 7}
+        )
         self.assertEqual(resp.status_code, 302)
         self.assertEqual(resp["Location"], reverse("app:professor-dashboard"))
 
         # Can edit assigned and update_status auto-applies
         resp = self.client.post(
             reverse("app:grade-edit", args=[grade.id]),
-            data={"promotion_grade": 8, "final_grade": 7, "status": Grade.StatusSubject.REGULAR},
+            data={
+                "promotion_grade": 8,
+                "final_grade": 7,
+                "status": Grade.StatusSubject.REGULAR,
+            },
         )
         self.assertEqual(resp.status_code, 302)
         grade.refresh_from_db()
-    # Since status wasn't changed explicitly (remains REGULAR),
-    # update_status should set PROMOTED for final_grade >= 6
+        # Since status wasn't changed explicitly (remains REGULAR),
+        # update_status should set PROMOTED for final_grade >= 6
         self.assertEqual(grade.status, Grade.StatusSubject.PROMOTED)
 
     def test_professor_final_inscriptions_list(self):
@@ -533,5 +527,7 @@ class ProfessorViewsTests(TestCase):
         self.prof.final_exams.add(final)
         FinalExamInscription.objects.create(student=self.student, final_exam=final)
         self.client.force_login(self.prof_user)
-        resp = self.client.get(reverse("app:professor-final-inscriptions", args=[final.id]))
+        resp = self.client.get(
+            reverse("app:professor-final-inscriptions", args=[final.id])
+        )
         self.assertEqual(resp.status_code, 200)

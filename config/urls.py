@@ -14,17 +14,23 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include
 from django.views.generic import TemplateView
+from config.health_check import health_check
 
 urlpatterns = [
+    # Health check endpoint for monitoring
+    path("health/", health_check, name="health_check"),
     # Move Django admin to avoid clashing with custom admin dashboard
-    path('django-admin/', admin.site.urls),
-    path('', TemplateView.as_view(template_name='home.html'), name='home'),
+    path("django-admin/", admin.site.urls),
+    path("", TemplateView.as_view(template_name="home.html"), name="home"),
     # App routes (includes auth, admin, student, professor)
-    path('', include('app.urls')),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)  # This line serves media files during development
+    path("", include("app.urls")),
+] + static(
+    settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
+)  # This line serves media files during development

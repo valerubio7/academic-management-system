@@ -15,8 +15,13 @@ class SubjectInscription(models.Model):
     Meta:
         unique_together: Ensures a student cannot enroll in the same subject twice.
     """
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='subjects_inscriptions')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='subject_inscriptions')
+
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="subjects_inscriptions"
+    )
+    subject = models.ForeignKey(
+        Subject, on_delete=models.CASCADE, related_name="subject_inscriptions"
+    )
     inscription_date = models.DateField(auto_now_add=True)
 
     def __str__(self):
@@ -24,4 +29,9 @@ class SubjectInscription(models.Model):
         return f"{self.student.user.username} - {self.subject.name} ({self.inscription_date})"
 
     class Meta:
-        unique_together = ('student', 'subject')
+        unique_together = ("student", "subject")
+        indexes = [
+            models.Index(fields=["student"]),
+            models.Index(fields=["subject"]),
+            models.Index(fields=["inscription_date"]),
+        ]
