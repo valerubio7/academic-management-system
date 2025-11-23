@@ -17,6 +17,7 @@ services:
   backend:
     image: ams:dev
     build:  .
+    command: python manage.py runserver 0.0.0.0:8000  # Override for development
     volumes:
       - .:/app  # only for development, not recommended for production
     environment:
