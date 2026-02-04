@@ -279,100 +279,139 @@ if os.getenv("REDIS_URL"):
         }
     }
 else:
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
-            "LOCATION": BASE_DIR / "cache",
+    # Use locmem cache in development to avoid permission issues
+    if DEBUG:
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+                "LOCATION": "unique-snowflake",
+            }
         }
-    }
+    else:
+        CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+                "LOCATION": str(BASE_DIR / "cache"),
+            }
+        }
 
 
 # =================================================================
 # LOGGING CONFIGURATION
 # =================================================================
 
-# Create logs directory if it doesn't exist
-LOGS_DIR = BASE_DIR / "logs"
-LOGS_DIR.mkdir(exist_ok=True)
+# Create logs directory if it doesn't exist (use tmpdir during development if needed)
+import tempfile
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
-            "style": "{",
+if DEBUG:
+    LOGS_DIR = Path(tempfile.gettempdir()) / "ams_logs"
+    LOGS_DIR.mkdir(exist_ok=True)
+else:
+    LOGS_DIR = BASE_DIR / "logs"
+    LOGS_DIR.mkdir(exist_ok=True, mode=0o755)
+
+# Simplified logging config - console only for DEBUG, file+console for production
+if DEBUG:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {
+                "format": "{levelname} {asctime} {message}",
+                "style": "{",
+            },
         },
-        "simple": {
-            "format": "{levelname} {asctime} {message}",
-            "style": "{",
+        "handlers": {
+            "console": {
+                "level": "DEBUG",
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+            },
         },
-    },
-    "filters": {
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
-        },
-    },
-    "handlers": {
-        "console": {
+        "root": {
+            "handlers": ["console"],
             "level": "INFO",
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
         },
-        "file": {
-            "level": "ERROR",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOGS_DIR / "django.log",
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 5,
-            "formatter": "verbose",
+        "loggers": {
+            "django": {
+                "handlers": ["console"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "app": {
+                "handlers": ["console"],
+                "level": "DEBUG",
+                "propagate": False,
+            },
         },
-        "file_debug": {
-            "level": "DEBUG",
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": LOGS_DIR / "debug.log",
-            "maxBytes": 1024 * 1024 * 10,  # 10 MB
-            "backupCount": 3,
-            "formatter": "verbose",
-            "filters": ["require_debug_true"],
+    }
+else:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "verbose": {
+                "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+                "style": "{",
+            },
+            "simple": {
+                "format": "{levelname} {asctime} {message}",
+                "style": "{",
+            },
         },
-        "mail_admins": {
-            "level": "ERROR",
-            "class": "django.utils.log.AdminEmailHandler",
-            "filters": ["require_debug_false"],
-            "formatter": "verbose",
+        "filters": {
+            "require_debug_false": {
+                "()": "django.utils.log.RequireDebugFalse",
+            },
         },
-    },
-    "root": {
-        "handlers": ["console", "file"],
-        "level": "INFO",
-    },
-    "loggers": {
-        "django": {
+        "handlers": {
+            "console": {
+                "level": "INFO",
+                "class": "logging.StreamHandler",
+                "formatter": "simple",
+            },
+            "file": {
+                "level": "ERROR",
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": str(LOGS_DIR / "django.log"),
+                "maxBytes": 1024 * 1024 * 10,  # 10 MB
+                "backupCount": 5,
+                "formatter": "verbose",
+            },
+            "mail_admins": {
+                "level": "ERROR",
+                "class": "django.utils.log.AdminEmailHandler",
+                "filters": ["require_debug_false"],
+                "formatter": "verbose",
+            },
+        },
+        "root": {
             "handlers": ["console", "file"],
             "level": "INFO",
-            "propagate": False,
         },
-        "django.request": {
-            "handlers": ["file", "mail_admins"],
-            "level": "ERROR",
-            "propagate": False,
+        "loggers": {
+            "django": {
+                "handlers": ["console", "file"],
+                "level": "INFO",
+                "propagate": False,
+            },
+            "django.request": {
+                "handlers": ["file", "mail_admins"],
+                "level": "ERROR",
+                "propagate": False,
+            },
+            "django.security": {
+                "handlers": ["file", "mail_admins"],
+                "level": "ERROR",
+                "propagate": False,
+            },
+            "app": {
+                "handlers": ["console", "file"],
+                "level": "INFO",
+                "propagate": False,
+            },
         },
-        "django.security": {
-            "handlers": ["file", "mail_admins"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-        "app": {
-            "handlers": ["console", "file", "file_debug"],
-            "level": "DEBUG" if DEBUG else "INFO",
-            "propagate": False,
-        },
-    },
-}
+    }
 
 
 # =================================================================

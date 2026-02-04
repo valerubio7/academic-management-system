@@ -141,3 +141,4 @@ pyvenv.cfg
 
 # add migration cache files (but keep migration files!)
 **/migrations/__pycache__/
+/tmp/ams_logs
