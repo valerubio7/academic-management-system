@@ -68,8 +68,11 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # main app
-    "app.apps.AppConfig",
+    # project apps
+    "users.apps.UsersConfig",
+    "academics.apps.AcademicsConfig",
+    "enrollments.apps.EnrollmentsConfig",
+    "grading.apps.GradingConfig",
 ]
 
 MIDDLEWARE = [
@@ -125,7 +128,7 @@ DATABASES = {
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
-AUTH_USER_MODEL = "app.CustomUser"
+AUTH_USER_MODEL = "users.CustomUser"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
