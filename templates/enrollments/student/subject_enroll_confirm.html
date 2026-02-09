@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmar Inscripción - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-6 mx-auto">
+    <div class="d-flex align-items-center mb-4">
+      <a href="{% url 'enrollments:available-subjects' %}" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1>
+        <i class="bi bi-check-circle me-2"></i>
+        Confirmar Inscripción
+      </h1>
+    </div>
+
+    <div class="card {% if not can_enroll %}border-danger{% else %}border-primary{% endif %}">
+      <div class="card-header {% if not can_enroll %}bg-danger text-white{% else %}bg-primary text-white{% endif %}">
+        <h5 class="mb-0">Inscripción a Materia</h5>
+      </div>
+      <div class="card-body">
+        <h4 class="card-title">{{ subject.name }}</h4>
+        
+        <div class="row mb-3">
+          <div class="col-6">
+            <strong>Código:</strong> <code>{{ subject.code }}</code>
+          </div>
+          <div class="col-6">
+            <strong>Carrera:</strong> {{ subject.career.name }}
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-6">
+            <strong>Año:</strong> {{ subject.year }}°
+          </div>
+          <div class="col-6">
+            <strong>Período:</strong> {{ subject.get_period_display }}
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-6">
+            <strong>Categoría:</strong>
+            <span class="badge {% if subject.category == 'obligatory' %}bg-primary{% else %}bg-secondary{% endif %}">
+              {{ subject.get_category_display }}
+            </span>
+          </div>
+          <div class="col-6">
+            <strong>Horas Semanales:</strong> {{ subject.semanal_hours }}h
+          </div>
+        </div>
+
+        {% if subject.description %}
+          <div class="mb-3">
+            <strong>Descripción:</strong>
+            <p class="text-muted">{{ subject.description }}</p>
+          </div>
+        {% endif %}
+
+        {% if not can_enroll %}
+          <div class="alert alert-danger">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No podés inscribirte:</strong> {{ reason }}
+          </div>
+        {% endif %}
+      </div>
+      <div class="card-footer">
+        <div class="d-flex justify-content-end gap-2">
+          <a href="{% url 'enrollments:available-subjects' %}" class="btn btn-secondary">
+            <i class="bi bi-x-circle me-1"></i>Cancelar
+          </a>
+          {% if can_enroll %}
+            <form method="post" class="d-inline">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i>Confirmar Inscripción
+              </button>
+            </form>
+          {% else %}
+            <a href="{% url 'enrollments:available-subjects' %}" class="btn btn-outline-secondary">
+              Ver otras materias
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

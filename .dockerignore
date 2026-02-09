@@ -35,6 +35,7 @@ Thumbs.db
 # Docker-related files (optional)
 Dockerfile
 .dockerignore
+docker-compose.yml
 
 # Test-related files
 .coverage
@@ -47,15 +48,26 @@ test-results/
 # Django static files (collected with collectstatic)
 staticfiles/
 static_root/
-static/
+# Note: static/ is needed for base static files, only exclude staticfiles/
 
 # Local SQLite database (if used)
 *.sqlite3
+db.sqlite3
 
-# Environment variables files
-.env
+# Environment variables files (keep for docker build)
+# .env
 .env.*
 
 # Optional: Django migration cache
 **/migrations/*.pyc
 **/migrations/__pycache__/
+
+# Documentation and README files (keep README.md for build)
+*.md
+!README.md
+LICENSE
+
+# CI/CD and development files
+.github/
+.gitlab-ci.yml
+.travis.yml

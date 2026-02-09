@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Materias - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>
+        <i class="bi bi-book me-2"></i>
+        Materias
+      </h1>
+      <a href="{% url 'academics:subject-create' %}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Crear Materia
+      </a>
+    </div>
+
+    <!-- Subjects table -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Carrera</th>
+                <th>Año</th>
+                <th>Período</th>
+                <th>Categoría</th>
+                <th>Horas</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for subject in subjects %}
+                <tr>
+                  <td><code>{{ subject.code }}</code></td>
+                  <td>{{ subject.name }}</td>
+                  <td>{{ subject.career.name }}</td>
+                  <td>{{ subject.year }}°</td>
+                  <td>{{ subject.get_period_display }}</td>
+                  <td>
+                    <span class="badge {% if subject.category == 'obligatory' %}bg-primary{% else %}bg-secondary{% endif %}">
+                      {{ subject.get_category_display }}
+                    </span>
+                  </td>
+                  <td>{{ subject.semanal_hours }}h</td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <a href="{% url 'academics:subject-assign-professors' subject.code %}" class="btn btn-outline-info" title="Asignar profesores">
+                        <i class="bi bi-person-plus"></i>
+                      </a>
+                      <a href="{% url 'academics:subject-edit' subject.code %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                      <a href="{% url 'academics:subject-delete' subject.code %}" class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="8" class="text-center text-muted">
+                    No hay materias registradas.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+          <nav>
+            <ul class="pagination justify-content-center">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1">Primera</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                </li>
+              {% endif %}
+
+              <li class="page-item active">
+                <span class="page-link">
+                  Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                </span>
+              </li>
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

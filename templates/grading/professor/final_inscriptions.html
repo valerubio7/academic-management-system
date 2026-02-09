@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Inscriptos al Final - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1>
+          <i class="bi bi-people me-2"></i>
+          Estudiantes Inscriptos
+        </h1>
+        <p class="text-muted mb-0">{{ final.subject.name }}</p>
+      </div>
+      <a href="{% url 'users:professor-dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Volver al Dashboard
+      </a>
+    </div>
+
+    <!-- Final Exam Info Card -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>Materia:</strong> {{ final.subject.name }}
+          </div>
+          <div class="col-md-3">
+            <strong>Fecha:</strong> {{ final.date|date:"d/m/Y" }}
+          </div>
+          <div class="col-md-3">
+            <strong>Ubicación:</strong> {{ final.location }}
+          </div>
+          <div class="col-md-3">
+            <strong>Llamado:</strong> <span class="badge bg-info">{{ final.call_number }}°</span>
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-md-3">
+            <strong>Código:</strong> <code>{{ final.subject.code }}</code>
+          </div>
+          <div class="col-md-3">
+            <strong>Carrera:</strong> {{ final.subject.career.name }}
+          </div>
+          <div class="col-md-3">
+            <strong>Duración:</strong> {{ final.duration }}
+          </div>
+          <div class="col-md-3">
+            <strong>Inscriptos:</strong> {{ inscriptions|length }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inscriptions Table -->
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Lista de Estudiantes</h5>
+      </div>
+      <div class="card-body">
+        {% if inscriptions %}
+          <div class="table-responsive">
+            <table class="table table-hover table-striped">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Legajo</th>
+                  <th>Estudiante</th>
+                  <th>Email</th>
+                  <th>Carrera</th>
+                  <th>Fecha Inscripción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inscription in inscriptions %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ inscription.student.student_id }}</td>
+                    <td>{{ inscription.student.user.get_full_name }}</td>
+                    <td><small>{{ inscription.student.user.email }}</small></td>
+                    <td>{{ inscription.student.career.name }}</td>
+                    <td>{{ inscription.inscription_date|date:"d/m/Y" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Summary -->
+          <div class="mt-3">
+            <strong>Total de inscriptos:</strong> {{ inscriptions|length }}
+          </div>
+
+          <!-- Print Button -->
+          <div class="mt-3">
+            <button onclick="window.print()" class="btn btn-outline-secondary">
+              <i class="bi bi-printer me-1"></i>Imprimir Lista
+            </button>
+          </div>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No hay estudiantes inscriptos en este final todavía.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@media print {
+  .btn, nav, .d-flex .btn-outline-secondary {
+    display: none !important;
+  }
+}
+</style>
+{% endblock %}

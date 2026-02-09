@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Profesor - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <div>
+        <h1>
+          <i class="bi bi-person-workspace me-2"></i>
+          Dashboard Profesor
+        </h1>
+        <p class="text-muted mb-0">
+          Bienvenido, {{ user.get_full_name }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Professor Info Card -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-3">
+            <strong>ID Profesor:</strong> {{ professor.professor_id }}
+          </div>
+          <div class="col-md-3">
+            <strong>Categoría:</strong> {{ professor.get_category_display }}
+          </div>
+          <div class="col-md-3">
+            <strong>Título:</strong> {{ professor.degree }}
+          </div>
+          <div class="col-md-3">
+            <strong>Materias asignadas:</strong> {{ subjects_count }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card border-primary">
+          <div class="card-body text-center">
+            <i class="bi bi-book fs-1 text-primary"></i>
+            <h5 class="card-title mt-2">Mis Materias</h5>
+            <p class="card-text">{{ subjects_count }} materias asignadas</p>
+            <a href="#materias" class="btn btn-outline-primary btn-sm">Ver Materias</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card border-success">
+          <div class="card-body text-center">
+            <i class="bi bi-calendar-check fs-1 text-success"></i>
+            <h5 class="card-title mt-2">Finales Asignados</h5>
+            <p class="card-text">{{ assigned_finals|length }} finales próximos</p>
+            <a href="#finales" class="btn btn-outline-success btn-sm">Ver Finales</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assigned Subjects -->
+    <div class="card mb-4" id="materias">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-book me-2"></i>Materias Asignadas</h5>
+      </div>
+      <div class="card-body">
+        {% if assigned_subjects %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Materia</th>
+                  <th>Carrera</th>
+                  <th>Año</th>
+                  <th>Período</th>
+                  <th>Horas</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for subject in assigned_subjects %}
+                  <tr>
+                    <td><code>{{ subject.code }}</code></td>
+                    <td>{{ subject.name }}</td>
+                    <td>{{ subject.career.name }}</td>
+                    <td>{{ subject.year }}°</td>
+                    <td>{{ subject.get_period_display }}</td>
+                    <td>{{ subject.semanal_hours }}h</td>
+                    <td>
+                      <a href="{% url 'grading:subject-grades' subject.code %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-journal-text me-1"></i>Gestionar Notas
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No tenés materias asignadas actualmente.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Assigned Finals -->
+    <div class="card" id="finales">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Finales Asignados</h5>
+      </div>
+      <div class="card-body">
+        {% if assigned_finals %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Materia</th>
+                  <th>Fecha</th>
+                  <th>Ubicación</th>
+                  <th>Llamado</th>
+                  <th>Duración</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for final in assigned_finals %}
+                  <tr>
+                    <td>
+                      <strong>{{ final.subject.name }}</strong><br>
+                      <small class="text-muted">{{ final.subject.code }} - {{ final.subject.career.name }}</small>
+                    </td>
+                    <td>{{ final.date|date:"d/m/Y" }}</td>
+                    <td>{{ final.location }}</td>
+                    <td><span class="badge bg-info">{{ final.call_number }}°</span></td>
+                    <td>{{ final.duration }}</td>
+                    <td>
+                      <a href="{% url 'grading:final-inscriptions' final.pk %}" class="btn btn-sm btn-success">
+                        <i class="bi bi-people me-1"></i>Ver Inscriptos
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No tenés finales asignados actualmente.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
