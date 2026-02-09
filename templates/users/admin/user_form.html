@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}{% if form.instance.pk %}Editar{% else %}Crear{% endif %} Usuario - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-10 mx-auto">
+    <div class="d-flex align-items-center mb-4">
+      <a href="{% url 'users:user-list' %}" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1>
+        <i class="bi bi-person me-2"></i>
+        {% if form.instance.pk %}
+          Editar Usuario
+        {% else %}
+          Crear Usuario
+        {% endif %}
+      </h1>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger">
+          {{ form.non_field_errors }}
+        </div>
+      {% endif %}
+
+      <!-- User Information Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-person-badge me-2"></i>Información del Usuario</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.username.id_for_label }}" class="form-label">Nombre de Usuario *</label>
+              <input type="text" name="{{ form.username.name }}" class="form-control {% if form.username.errors %}is-invalid{% endif %}" 
+                     id="{{ form.username.id_for_label }}" value="{{ form.username.value|default:'' }}" required>
+              {% if form.username.errors %}
+                <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.email.id_for_label }}" class="form-label">Email *</label>
+              <input type="email" name="{{ form.email.name }}" class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                     id="{{ form.email.id_for_label }}" value="{{ form.email.value|default:'' }}" required>
+              {% if form.email.errors %}
+                <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.first_name.id_for_label }}" class="form-label">Nombre *</label>
+              <input type="text" name="{{ form.first_name.name }}" class="form-control {% if form.first_name.errors %}is-invalid{% endif %}" 
+                     id="{{ form.first_name.id_for_label }}" value="{{ form.first_name.value|default:'' }}" required>
+              {% if form.first_name.errors %}
+                <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.last_name.id_for_label }}" class="form-label">Apellido *</label>
+              <input type="text" name="{{ form.last_name.name }}" class="form-control {% if form.last_name.errors %}is-invalid{% endif %}" 
+                     id="{{ form.last_name.id_for_label }}" value="{{ form.last_name.value|default:'' }}" required>
+              {% if form.last_name.errors %}
+                <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if not form.instance.pk %}
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.password1.id_for_label }}" class="form-label">Contraseña *</label>
+                <input type="password" name="{{ form.password1.name }}" class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
+                       id="{{ form.password1.id_for_label }}" required>
+                {% if form.password1.errors %}
+                  <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                {% endif %}
+              </div>
+              
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.password2.id_for_label }}" class="form-label">Confirmar Contraseña *</label>
+                <input type="password" name="{{ form.password2.name }}" class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
+                       id="{{ form.password2.id_for_label }}" required>
+                {% if form.password2.errors %}
+                  <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.dni.id_for_label }}" class="form-label">DNI *</label>
+              <input type="text" name="{{ form.dni.name }}" class="form-control {% if form.dni.errors %}is-invalid{% endif %}" 
+                     id="{{ form.dni.id_for_label }}" value="{{ form.dni.value|default:'' }}" required>
+              {% if form.dni.errors %}
+                <div class="invalid-feedback">{{ form.dni.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.phone.id_for_label }}" class="form-label">Teléfono</label>
+              <input type="text" name="{{ form.phone.name }}" class="form-control {% if form.phone.errors %}is-invalid{% endif %}" 
+                     id="{{ form.phone.id_for_label }}" value="{{ form.phone.value|default:'' }}">
+              {% if form.phone.errors %}
+                <div class="invalid-feedback">{{ form.phone.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.birth_date.id_for_label }}" class="form-label">Fecha de Nacimiento</label>
+              <input type="date" name="{{ form.birth_date.name }}" class="form-control {% if form.birth_date.errors %}is-invalid{% endif %}" 
+                     id="{{ form.birth_date.id_for_label }}" value="{{ form.birth_date.value|default:'' }}">
+              {% if form.birth_date.errors %}
+                <div class="invalid-feedback">{{ form.birth_date.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.address.id_for_label }}" class="form-label">Dirección</label>
+              <textarea name="{{ form.address.name }}" class="form-control {% if form.address.errors %}is-invalid{% endif %}" 
+                        id="{{ form.address.id_for_label }}" rows="1">{{ form.address.value|default:'' }}</textarea>
+              {% if form.address.errors %}
+                <div class="invalid-feedback">{{ form.address.errors.0 }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="{{ form.role.id_for_label }}" class="form-label">Rol *</label>
+              <select name="{{ form.role.name }}" class="form-select {% if form.role.errors %}is-invalid{% endif %}" 
+                      id="{{ form.role.id_for_label }}" required {% if form.instance.pk %}disabled{% endif %}>
+                <option value="">Seleccione un rol</option>
+                {% for value, label in form.role.field.choices %}
+                  {% if value %}
+                    <option value="{{ value }}" {% if value == form.role.value %}selected{% endif %}>{{ label }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              {% if form.role.errors %}
+                <div class="invalid-feedback">{{ form.role.errors.0 }}</div>
+              {% endif %}
+              {% if form.instance.pk %}
+                <small class="text-muted">El rol no puede ser modificado después de crear el usuario.</small>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6 mb-3">
+              <div class="form-check mt-4">
+                <input type="checkbox" name="{{ form.is_active.name }}" class="form-check-input" 
+                       id="{{ form.is_active.id_for_label }}" 
+                       {% if form.is_active.value or form.is_active.value is None %}checked{% endif %}>
+                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                  Usuario Activo
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Information Card (only for edit) -->
+      {% if profile_form %}
+        <div class="card mb-3">
+          <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-clipboard-data me-2"></i>Información del Perfil</h5>
+          </div>
+          <div class="card-body">
+            {% if form.instance.role == 'student' %}
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.student_id.id_for_label }}" class="form-label">Legajo *</label>
+                  <input type="text" name="{{ profile_form.student_id.name }}" class="form-control {% if profile_form.student_id.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.student_id.id_for_label }}" value="{{ profile_form.student_id.value|default:'' }}" readonly>
+                  {% if profile_form.student_id.errors %}
+                    <div class="invalid-feedback">{{ profile_form.student_id.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.career.id_for_label }}" class="form-label">Carrera</label>
+                  <select name="{{ profile_form.career.name }}" class="form-select {% if profile_form.career.errors %}is-invalid{% endif %}" 
+                          id="{{ profile_form.career.id_for_label }}">
+                    <option value="">Sin carrera asignada</option>
+                    {% for career in profile_form.career.field.queryset %}
+                      <option value="{{ career.pk }}" {% if career.pk == profile_form.career.value %}selected{% endif %}>{{ career.name }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if profile_form.career.errors %}
+                    <div class="invalid-feedback">{{ profile_form.career.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="{{ profile_form.enrollment_date.id_for_label }}" class="form-label">Fecha de Inscripción *</label>
+                <input type="date" name="{{ profile_form.enrollment_date.name }}" class="form-control {% if profile_form.enrollment_date.errors %}is-invalid{% endif %}" 
+                       id="{{ profile_form.enrollment_date.id_for_label }}" value="{{ profile_form.enrollment_date.value|default:'' }}">
+                {% if profile_form.enrollment_date.errors %}
+                  <div class="invalid-feedback">{{ profile_form.enrollment_date.errors.0 }}</div>
+                {% endif %}
+              </div>
+
+            {% elif form.instance.role == 'professor' %}
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.professor_id.id_for_label }}" class="form-label">ID Profesor *</label>
+                  <input type="text" name="{{ profile_form.professor_id.name }}" class="form-control {% if profile_form.professor_id.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.professor_id.id_for_label }}" value="{{ profile_form.professor_id.value|default:'' }}" readonly>
+                  {% if profile_form.professor_id.errors %}
+                    <div class="invalid-feedback">{{ profile_form.professor_id.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.degree.id_for_label }}" class="form-label">Título *</label>
+                  <input type="text" name="{{ profile_form.degree.name }}" class="form-control {% if profile_form.degree.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.degree.id_for_label }}" value="{{ profile_form.degree.value|default:'' }}">
+                  {% if profile_form.degree.errors %}
+                    <div class="invalid-feedback">{{ profile_form.degree.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.category.id_for_label }}" class="form-label">Categoría *</label>
+                  <select name="{{ profile_form.category.name }}" class="form-select {% if profile_form.category.errors %}is-invalid{% endif %}" 
+                          id="{{ profile_form.category.id_for_label }}">
+                    {% for value, label in profile_form.category.field.choices %}
+                      <option value="{{ value }}" {% if value == profile_form.category.value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  {% if profile_form.category.errors %}
+                    <div class="invalid-feedback">{{ profile_form.category.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.hire_date.id_for_label }}" class="form-label">Fecha de Alta *</label>
+                  <input type="date" name="{{ profile_form.hire_date.name }}" class="form-control {% if profile_form.hire_date.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.hire_date.id_for_label }}" value="{{ profile_form.hire_date.value|default:'' }}">
+                  {% if profile_form.hire_date.errors %}
+                    <div class="invalid-feedback">{{ profile_form.hire_date.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+            {% elif form.instance.role == 'administrator' %}
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.administrator_id.id_for_label }}" class="form-label">ID Administrador *</label>
+                  <input type="text" name="{{ profile_form.administrator_id.name }}" class="form-control {% if profile_form.administrator_id.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.administrator_id.id_for_label }}" value="{{ profile_form.administrator_id.value|default:'' }}" readonly>
+                  {% if profile_form.administrator_id.errors %}
+                    <div class="invalid-feedback">{{ profile_form.administrator_id.errors.0 }}</div>
+                  {% endif %}
+                </div>
+
+                <div class="col-md-6 mb-3">
+                  <label for="{{ profile_form.position.id_for_label }}" class="form-label">Posición *</label>
+                  <input type="text" name="{{ profile_form.position.name }}" class="form-control {% if profile_form.position.errors %}is-invalid{% endif %}" 
+                         id="{{ profile_form.position.id_for_label }}" value="{{ profile_form.position.value|default:'' }}">
+                  {% if profile_form.position.errors %}
+                    <div class="invalid-feedback">{{ profile_form.position.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="{{ profile_form.hire_date.id_for_label }}" class="form-label">Fecha de Alta *</label>
+                <input type="date" name="{{ profile_form.hire_date.name }}" class="form-control {% if profile_form.hire_date.errors %}is-invalid{% endif %}" 
+                       id="{{ profile_form.hire_date.id_for_label }}" value="{{ profile_form.hire_date.value|default:'' }}">
+                {% if profile_form.hire_date.errors %}
+                  <div class="invalid-feedback">{{ profile_form.hire_date.errors.0 }}</div>
+                {% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Action Buttons -->
+      <div class="d-flex justify-content-end gap-2">
+        <a href="{% url 'users:user-list' %}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="bi bi-check-circle me-1"></i>
+          {% if form.instance.pk %}Actualizar{% else %}Crear{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

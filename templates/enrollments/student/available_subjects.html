@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Materias Disponibles - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>
+        <i class="bi bi-book me-2"></i>
+        Materias Disponibles para Inscripción
+      </h1>
+      <a href="{% url 'users:student-dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Volver al Dashboard
+      </a>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>
+      <strong>Carrera:</strong> {{ student.career.name }} | 
+      <strong>Facultad:</strong> {{ student.career.faculty.name }}
+    </div>
+
+    <!-- Subjects List -->
+    <div class="card">
+      <div class="card-body">
+        {% if subjects %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Materia</th>
+                  <th>Año</th>
+                  <th>Período</th>
+                  <th>Categoría</th>
+                  <th>Horas</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for subject in subjects %}
+                  <tr>
+                    <td><code>{{ subject.code }}</code></td>
+                    <td>{{ subject.name }}</td>
+                    <td>{{ subject.year }}°</td>
+                    <td>{{ subject.get_period_display }}</td>
+                    <td>
+                      <span class="badge {% if subject.category == 'obligatory' %}bg-primary{% else %}bg-secondary{% endif %}">
+                        {{ subject.get_category_display }}
+                      </span>
+                    </td>
+                    <td>{{ subject.semanal_hours }}h</td>
+                    <td>
+                      <a href="{% url 'enrollments:subject-enroll' subject.code %}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus-circle me-1"></i>Inscribirme
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          {% if is_paginated %}
+            <nav>
+              <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page=1">Primera</a>
+                  </li>
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                  </li>
+                {% endif %}
+
+                <li class="page-item active">
+                  <span class="page-link">
+                    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                  </span>
+                </li>
+
+                {% if page_obj.has_next %}
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                  </li>
+                  <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                  </li>
+                {% endif %}
+              </ul>
+            </nav>
+          {% endif %}
+        {% else %}
+          <div class="alert alert-warning mb-0">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            No hay materias disponibles para inscripción. Ya estás inscripto en todas las materias de tu carrera o no hay materias configuradas.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

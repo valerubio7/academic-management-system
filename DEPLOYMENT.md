@@ -1,626 +1,431 @@
-# Production Deployment Guide
+# 🐳 Deployment Guide - Academic Management System
 
-## Academic Management System - Deployment Checklist
+Esta guía explica cómo desplegar el Academic Management System usando Docker Compose en diferentes entornos.
 
-This document provides a comprehensive guide for deploying the Academic Management System to production.
+## 📋 Tabla de Contenidos
 
-## Table of Contents
-
-1. [Pre-Deployment Requirements](#pre-deployment-requirements)
-2. [Security Configuration](#security-configuration)
-3. [Database Setup](#database-setup)
-4. [Static Files and Media](#static-files-and-media)
-5. [Deployment Steps](#deployment-steps)
-6. [Post-Deployment Verification](#post-deployment-verification)
-7. [Monitoring and Maintenance](#monitoring-and-maintenance)
-8. [Troubleshooting](#troubleshooting)
+- [Requisitos Previos](#requisitos-previos)
+- [Configuración Inicial](#configuración-inicial)
+- [Deployment Local (Desarrollo)](#deployment-local-desarrollo)
+- [Deployment Producción](#deployment-producción)
+- [Operaciones Comunes](#operaciones-comunes)
+- [Monitoreo y Logs](#monitoreo-y-logs)
+- [Backup y Restauración](#backup-y-restauración)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
-## Pre-Deployment Requirements
+## 🔧 Requisitos Previos
 
-### System Requirements
+### Software Necesario
 
-- **Server**: Linux-based OS (Ubuntu 22.04 LTS recommended)
-- **RAM**: Minimum 2GB (4GB+ recommended)
-- **Storage**: 20GB+ free space
-- **CPU**: 2+ cores recommended
-- **Network**: Static IP or domain name configured
+- **Docker**: >= 20.10
+- **Docker Compose**: >= 2.0
+- **Make** (opcional, para comandos simplificados)
 
-### Software Requirements
-
-- Docker Engine 24.0+
-- Docker Compose 2.20+
-- SSL/TLS certificates (Let's Encrypt recommended)
-- Domain name with DNS configured
-
-### Access Requirements
-
-- SSH access to production server
-- Sudo/root privileges
-- Firewall configuration access
-- Database backup location
-
----
-
-## Security Configuration
-
-### 1. Generate Strong Credentials
+### Verificar Instalación
 
 ```bash
-# Generate SECRET_KEY
+docker --version
+docker-compose --version
+make --version  # opcional
+```
+
+---
+
+## ⚙️ Configuración Inicial
+
+### 1. Clonar el Repositorio
+
+```bash
+git clone <repository-url>
+cd academic-management-system
+```
+
+### 2. Configurar Variables de Entorno
+
+#### Para Desarrollo
+
+```bash
+cp .env.example .env
+```
+
+Editar `.env` con configuración de desarrollo (DEBUG=True).
+
+#### Para Producción
+
+```bash
+cp .env.production.example .env.production
+```
+
+**⚠️ IMPORTANTE:** Actualizar los siguientes valores en `.env.production`:
+
+```bash
+# Generar SECRET_KEY único
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 
-# Generate strong database password (32 characters)
-openssl rand -base64 32
-```
-
-### 2. Configure Environment Variables
-
-Copy `.env.example` to `.env` and update ALL values:
-
-```bash
-cp .env.example .env
-chmod 600 .env  # Restrict permissions
-```
-
-**Critical variables to change:**
-
-```env
-SECRET_KEY=<YOUR_GENERATED_SECRET_KEY_HERE>
+# Actualizar en .env.production:
+SECRET_KEY=<tu-secret-key-generado>
 DEBUG=False
-ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
-
-POSTGRES_PASSWORD=<YOUR_STRONG_DB_PASSWORD>
-EMAIL_HOST_PASSWORD=<YOUR_EMAIL_PASSWORD>
-
-CSRF_TRUSTED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+ALLOWED_HOSTS=tu-dominio.com,www.tu-dominio.com
+POSTGRES_PASSWORD=<password-seguro>
+CSRF_TRUSTED_ORIGINS=https://tu-dominio.com,https://www.tu-dominio.com
 ```
 
-### 3. Firewall Configuration
+### 3. Permisos del Entrypoint Script
 
 ```bash
-# Allow SSH (if not already allowed)
-sudo ufw allow 22/tcp
-
-# Allow HTTP and HTTPS
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-
-# Enable firewall
-sudo ufw enable
-
-# Verify rules
-sudo ufw status
-```
-
-### 4. SSL/TLS Certificate Setup
-
-**Using Let's Encrypt (Certbot):**
-
-```bash
-# Install Certbot
-sudo apt update
-sudo apt install certbot python3-certbot-nginx
-
-# Obtain certificate
-sudo certbot certonly --standalone -d yourdomain.com -d www.yourdomain.com
-
-# Certificates will be in:
-# /etc/letsencrypt/live/yourdomain.com/fullchain.pem
-# /etc/letsencrypt/live/yourdomain.com/privkey.pem
+chmod +x docker-entrypoint.sh
 ```
 
 ---
 
-## Database Setup
+## 🚀 Deployment Local (Desarrollo)
 
-### 1. Database Initialization
-
-The database is automatically created by Docker Compose, but verify:
+### Usando Make (Recomendado)
 
 ```bash
-# Check database service
-docker compose -f docker-compose.prod.yml ps db
+# Iniciar servicios
+make dev-up
 
-# Verify database connection
-docker compose -f docker-compose.prod.yml exec db psql -U ams_user -d academic_management_system -c "SELECT version();"
+# Ver logs
+make dev-logs
+
+# Detener servicios
+make dev-down
 ```
 
-### 2. Apply Migrations
+### Usando Docker Compose Directamente
 
 ```bash
-# Apply all migrations
-docker compose -f docker-compose.prod.yml exec backend python manage.py migrate
+# Iniciar servicios (DB + Django)
+docker-compose up -d
 
-# Verify migrations
-docker compose -f docker-compose.prod.yml exec backend python manage.py showmigrations
+# Ver logs
+docker-compose logs -f web
+
+# Detener servicios
+docker-compose down
 ```
 
-### 3. Database Backup Strategy
+### Acceder a la Aplicación
 
-**Set up automated backups:**
+- **URL**: http://localhost:8000
+- **Admin**: http://localhost:8000/admin/
+  - Usuario: `admin`
+  - Password: `admin123`
 
-Create `/opt/backups/db_backup.sh`:
+---
+
+## 🏢 Deployment Producción
+
+### 1. Preparar Entorno de Producción
 
 ```bash
-#!/bin/bash
-BACKUP_DIR="/opt/backups/postgres"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-CONTAINER_NAME="academic-management-system-db-1"
-DB_NAME="academic_management_system"
-DB_USER="ams_user"
+# Usar archivo .env.production
+cp .env.production .env
 
-mkdir -p $BACKUP_DIR
-
-docker exec $CONTAINER_NAME pg_dump -U $DB_USER $DB_NAME | gzip > $BACKUP_DIR/backup_$TIMESTAMP.sql.gz
-
-# Keep only last 30 days of backups
-find $BACKUP_DIR -name "backup_*.sql.gz" -mtime +30 -delete
-
-echo "Backup completed: backup_$TIMESTAMP.sql.gz"
+# Construir imágenes
+make prod-build
+# O:
+docker-compose build --no-cache
 ```
 
-**Schedule with cron:**
+### 2. Iniciar Servicios en Producción
 
 ```bash
-# Edit crontab
-crontab -e
+# Iniciar todos los servicios
+make prod-up
+# O:
+docker-compose up -d
+```
 
-# Add daily backup at 2 AM
-0 2 * * * /opt/backups/db_backup.sh >> /var/log/db_backup.log 2>&1
+### 3. Verificar Servicios
+
+```bash
+# Ver estado
+make status
+# O:
+docker-compose ps
+
+# Ver logs
+make prod-logs
+```
+
+### 4. Acceder a la Aplicación
+
+- **HTTP**: http://tu-dominio.com:8000
+- **Admin**: http://tu-dominio.com:8000/admin/
+
+---
+
+## 🔄 Operaciones Comunes
+
+### Migraciones de Base de Datos
+
+```bash
+# Ejecutar migraciones
+make migrate
+# O:
+docker-compose exec web python manage.py migrate
+
+# Crear nuevas migraciones
+make makemigrations
+# O:
+docker-compose exec web python manage.py makemigrations
+```
+
+### Crear Superusuario
+
+```bash
+make superuser
+# O:
+docker-compose exec web python manage.py createsuperuser
+```
+
+### Ejecutar Tests
+
+```bash
+# Tests básicos
+make test
+
+# Tests con coverage
+make test-coverage
+```
+
+### Recolectar Archivos Estáticos
+
+```bash
+make collectstatic
+# O:
+docker-compose exec web python manage.py collectstatic --noinput
+```
+
+### Acceder a Shell
+
+```bash
+# Shell de Django
+make shell
+
+# Shell del contenedor
+docker-compose exec web sh
+
+# Shell de PostgreSQL
+make db-shell
 ```
 
 ---
 
-## Static Files and Media
+## 📊 Monitoreo y Logs
 
-### 1. Collect Static Files
-
-```bash
-# Collect static files (WhiteNoise will serve them)
-docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
-```
-
-### 2. Verify Static Files
-
-Check that staticfiles directory is populated:
+### Ver Logs en Tiempo Real
 
 ```bash
-docker compose -f docker-compose.prod.yml exec backend ls -la staticfiles/
+# Logs de todos los servicios
+docker-compose logs -f
+
+# Logs de Django
+make logs-web
+# O:
+docker-compose logs -f web
+
+# Logs de PostgreSQL
+make logs-db
 ```
 
-### 3. Media Files Storage
+### Ubicación de Logs en el Contenedor
 
-For production, consider using cloud storage (AWS S3, Google Cloud Storage):
+- **Django**: `/app/logs/django.log` (en producción)
 
-**Optional: Configure S3 for media files**
-
-Add to `requirements.txt`:
-
-```
-boto3==1.28.85
-django-storages==1.14.2
-```
-
-Add to `config/settings.py`:
-
-```python
-if not DEBUG and os.getenv('AWS_STORAGE_BUCKET_NAME'):
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-    AWS_STORAGE_BUCKET_NAME = os.getenv('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME = os.getenv('AWS_S3_REGION_NAME', 'us-east-1')
-    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-```
-
----
-
-## Deployment Steps
-
-### Step-by-Step Production Deployment
-
-**1. Clone repository on production server:**
+### Health Checks
 
 ```bash
-cd /opt
-sudo git clone <repository-url> academic-management-system
-cd academic-management-system
-sudo chown -R $USER:$USER .
-```
-
-**2. Configure environment:**
-
-```bash
-cp .env.example .env
-nano .env  # Edit with production values
-chmod 600 .env
-```
-
-**3. Build production image:**
-
-```bash
-docker compose -f docker-compose.prod.yml build --no-cache
-```
-
-**4. Start services:**
-
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-**5. Verify services are running:**
-
-```bash
-docker compose -f docker-compose.prod.yml ps
-
-# Should show:
-# - db (healthy)
-# - backend (healthy)
-```
-
-**6. Run migrations:**
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend python manage.py migrate --noinput
-```
-
-**7. Collect static files:**
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
-```
-
-**8. Create superuser:**
-
-```bash
-docker compose -f docker-compose.prod.yml exec backend python manage.py createsuperuser
-```
-
-**9. Verify deployment:**
-
-```bash
-# Test health endpoint
-curl http://localhost:8000/health/
-
-# Expected output:
-# {"status":"healthy","database":"connected"}
-```
-
----
-
-## Post-Deployment Verification
-
-### 1. Functional Testing Checklist
-
-- [ ] Home page loads correctly
-- [ ] Login functionality works
-- [ ] Static files (CSS/JS) load correctly
-- [ ] Admin dashboard accessible
-- [ ] Can create users (admin, professor, student)
-- [ ] Can create faculties and careers
-- [ ] Can create subjects
-- [ ] Can enroll students in subjects
-- [ ] Can create and assign grades
-- [ ] Logout functionality works
-- [ ] Error pages (404, 500) display correctly
-- [ ] Health check endpoint responds
-
-### 2. Security Verification
-
-```bash
-# Verify DEBUG is False
-docker compose -f docker-compose.prod.yml exec backend python manage.py shell << EOF
-from django.conf import settings
-print(f"DEBUG: {settings.DEBUG}")
-print(f"ALLOWED_HOSTS: {settings.ALLOWED_HOSTS}")
-print(f"SECRET_KEY length: {len(settings.SECRET_KEY)}")
-EOF
-
-# Expected output:
-# DEBUG: False
-# ALLOWED_HOSTS: ['yourdomain.com', 'www.yourdomain.com']
-# SECRET_KEY length: 50+ characters
-```
-
-### 3. Performance Testing
-
-```bash
-# Test response time
-time curl -I http://localhost:8000/
-
-# Monitor resource usage
-docker stats
-
-# Check database connections
-docker compose -f docker-compose.prod.yml exec db psql -U ams_user -d academic_management_system -c "SELECT count(*) FROM pg_stat_activity;"
-```
-
----
-
-## Monitoring and Maintenance
-
-### 1. Log Monitoring
-
-**View application logs:**
-
-```bash
-# Real-time logs
-docker compose -f docker-compose.prod.yml logs -f backend
-
-# Error logs only
-docker compose -f docker-compose.prod.yml exec backend tail -f logs/django.log
-
-# Last 100 lines
-docker compose -f docker-compose.prod.yml logs --tail=100 backend
-```
-
-**Log rotation** is configured automatically (10MB files, 5 backups).
-
-### 2. Health Monitoring
-
-Set up external monitoring:
-
-- **Uptime monitoring**: Use UptimeRobot, Pingdom, or StatusCake
-- **Endpoint**: `https://yourdomain.com/health/`
-- **Frequency**: Every 5 minutes
-- **Alert on**: Non-200 response or response time > 5s
-
-### 3. Resource Monitoring
-
-```bash
-# Container resource usage
-docker stats
-
-# Disk usage
-df -h
-
-# Database size
-docker compose -f docker-compose.prod.yml exec db psql -U ams_user -d academic_management_system -c "SELECT pg_size_pretty(pg_database_size('academic_management_system'));"
-```
-
-### 4. Regular Maintenance Tasks
-
-**Daily:**
-
-- Monitor error logs
-- Check health endpoint
-- Verify backups completed
-
-**Weekly:**
-
-- Review access logs
-- Check disk space
-- Update packages in container (rebuild if needed)
-
-**Monthly:**
-
-- Review and optimize database queries
-- Analyze slow logs
-- Test disaster recovery procedure
-- Security audit
-
----
-
-## Troubleshooting
-
-### Common Issues and Solutions
-
-#### Application Won't Start
-
-**Symptoms:** Container exits immediately
-
-**Solutions:**
-
-1. Check logs: `docker compose -f docker-compose.prod.yml logs backend`
-2. Verify .env file exists and has correct values
-3. Check SECRET_KEY is set
-4. Verify ALLOWED_HOSTS is configured
-
-```bash
-# Validate environment
-docker compose -f docker-compose.prod.yml exec backend python manage.py check --deploy
-```
-
-#### Database Connection Errors
-
-**Symptoms:** "could not connect to server" errors
-
-**Solutions:**
-
-1. Verify database service is running:
-   ```bash
-   docker compose -f docker-compose.prod.yml ps db
-   ```
-2. Check database credentials in .env
-3. Verify DATABASE_HOST=db (not localhost)
-4. Check database logs:
-   ```bash
-   docker compose -f docker-compose.prod.yml logs db
-   ```
-
-#### Static Files Not Loading
-
-**Symptoms:** 404 errors for CSS/JS, no styling
-
-**Solutions:**
-
-1. Run collectstatic:
-   ```bash
-   docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
-   ```
-2. Verify WhiteNoise in MIDDLEWARE (it is configured)
-3. Check STATIC_ROOT and STATIC_URL settings
-4. Clear browser cache
-
-#### 500 Internal Server Error
-
-**Symptoms:** Custom 500 page or generic error
-
-**Solutions:**
-
-1. Check error logs:
-   ```bash
-   docker compose -f docker-compose.prod.yml exec backend cat logs/django.log
-   ```
-2. Verify all migrations applied:
-   ```bash
-   docker compose -f docker-compose.prod.yml exec backend python manage.py migrate --check
-   ```
-3. Check DEBUG=False (must be False for custom error pages)
-4. Verify templates exist (404.html, 500.html)
-
-#### Performance Issues
-
-**Symptoms:** Slow response times
-
-**Solutions:**
-
-1. Check resource usage: `docker stats`
-2. Increase Gunicorn workers in Dockerfile
-3. Enable Redis caching (uncomment in docker-compose.prod.yml)
-4. Analyze slow queries:
-   ```bash
-   docker compose -f docker-compose.prod.yml exec db psql -U ams_user -d academic_management_system -c "SELECT query, calls, total_time FROM pg_stat_statements ORDER BY total_time DESC LIMIT 10;"
-   ```
-5. Add database indexes (already configured for main models)
-
-#### Permission Errors
-
-**Symptoms:** Permission denied errors in logs
-
-**Solutions:**
-
-```bash
-# Fix ownership of volumes
-docker compose -f docker-compose.prod.yml exec backend chown -R nobody:nogroup /app/media
-docker compose -f docker-compose.prod.yml exec backend chown -R nobody:nogroup /app/logs
-```
-
----
-
-## Disaster Recovery
-
-### Restore from Backup
-
-**1. Stop services:**
-
-```bash
-docker compose -f docker-compose.prod.yml down
-```
-
-**2. Restore database:**
-
-```bash
-# Start only database
-docker compose -f docker-compose.prod.yml up -d db
-
-# Restore from backup
-gunzip -c /opt/backups/postgres/backup_20250101_020000.sql.gz | \
-  docker compose -f docker-compose.prod.yml exec -T db psql -U ams_user academic_management_system
-```
-
-**3. Start all services:**
-
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-**4. Verify:**
-
-```bash
+# Verificar health check de Django
 curl http://localhost:8000/health/
 ```
 
 ---
 
-## Performance Tuning
+## 💾 Backup y Restauración
 
-### Gunicorn Workers
+### Crear Backup de Base de Datos
 
-Edit `Dockerfile` and adjust workers based on CPU cores:
-
-```dockerfile
-# Formula: workers = (2 * CPU_CORES) + 1
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "9", "--timeout", "120", "config.wsgi:application"]
+```bash
+make backup-db
+# O:
+mkdir -p backups
+docker-compose exec -T db pg_dump -U admin AMSdatabase > backups/backup_$(date +%Y%m%d_%H%M%S).sql
 ```
 
-### Enable Redis Caching
+### Restaurar Base de Datos
 
-1. Uncomment Redis service in `docker-compose.prod.yml`
-2. Set `REDIS_URL=redis://redis:6379/1` in `.env`
-3. Restart services
+```bash
+# Usar Make (interactivo)
+make restore-db
 
-### Database Optimization
+# Manualmente
+docker-compose exec -T db psql -U admin AMSdatabase < backups/backup_YYYYMMDD_HHMMSS.sql
+```
 
-```sql
--- Run VACUUM regularly
-VACUUM ANALYZE;
+### Backup de Archivos Media
 
--- Check for missing indexes
-SELECT schemaname, tablename, attname, n_distinct, correlation
-FROM pg_stats
-WHERE schemaname = 'public'
-ORDER BY abs(correlation) DESC;
+```bash
+# Crear backup
+docker run --rm -v ams_media_files:/data -v $(pwd)/backups:/backup \
+  alpine tar czf /backup/media_backup_$(date +%Y%m%d_%H%M%S).tar.gz -C /data .
+
+# Restaurar backup
+docker run --rm -v ams_media_files:/data -v $(pwd)/backups:/backup \
+  alpine tar xzf /backup/media_backup_YYYYMMDD_HHMMSS.tar.gz -C /data
 ```
 
 ---
 
-## Security Hardening
+## 🐛 Troubleshooting
 
-### Additional Security Measures
+### Problema: Contenedor no inicia
 
-1. **Enable fail2ban:**
+```bash
+# Ver logs detallados
+docker-compose logs web
 
-   ```bash
-   sudo apt install fail2ban
-   sudo systemctl enable fail2ban
-   ```
+# Verificar configuración
+docker-compose config
+```
 
-2. **Set up automatic security updates:**
+### Problema: Error de conexión a PostgreSQL
 
-   ```bash
-   sudo apt install unattended-upgrades
-   sudo dpkg-reconfigure -plow unattended-upgrades
-   ```
+```bash
+# Verificar que PostgreSQL esté corriendo
+docker-compose ps db
 
-3. **Disable password SSH (use keys only):**
+# Verificar health check
+docker-compose exec db pg_isready -U admin
 
-   ```bash
-   # Edit /etc/ssh/sshd_config
-   PasswordAuthentication no
-   sudo systemctl restart sshd
-   ```
+# Reiniciar base de datos
+docker-compose restart db
+```
 
-4. **Install and configure ModSecurity** (if using Nginx)
+### Problema: Migraciones fallan
 
-5. **Regular security audits:**
-   ```bash
-   # Check for vulnerable dependencies
-   docker compose -f docker-compose.prod.yml exec backend pip list --outdated
-   ```
+```bash
+# Verificar estado de migraciones
+docker-compose exec web python manage.py showmigrations
+
+# Hacer fake de migración específica (si es necesario)
+docker-compose exec web python manage.py migrate --fake app_name migration_name
+```
+
+### Problema: Puerto 8000 ocupado
+
+```bash
+# Ver qué proceso usa el puerto
+sudo lsof -i :8000
+
+# Cambiar puerto en .env
+WEB_PORT=8001
+```
+
+### Problema: Permisos en volúmenes
+
+```bash
+# Verificar permisos
+docker-compose exec web ls -la /app/media
+
+# Arreglar permisos
+docker-compose exec web chown -R appuser:appuser /app/media
+```
+
+### Limpiar Todo y Empezar de Nuevo
+
+```bash
+# Detener y eliminar contenedores, volúmenes
+make clean-docker
+# O:
+docker-compose down -v
+docker system prune -af
+docker volume prune -f
+
+# Reconstruir
+docker-compose build --no-cache
+docker-compose up -d
+```
 
 ---
 
-## Support and Escalation
+## 📈 Optimización para Producción
 
-### Getting Help
+### 1. Configurar Workers de Gunicorn
 
-1. Check logs first
-2. Review this deployment guide
-3. Consult main README.md
-4. Check Django deployment checklist:
-   ```bash
-   docker compose -f docker-compose.prod.yml exec backend python manage.py check --deploy
-   ```
+Editar `docker-compose.yml`:
 
-### Emergency Contacts
+```yaml
+args:
+  WORKERS: 4  # Fórmula: (2 x CPU cores) + 1
+  TIMEOUT: 30
+```
 
-- System Administrator: [contact info]
-- Database Administrator: [contact info]
-- Development Team: [contact info]
+### 2. Configurar Redis para Caché (Opcional)
+
+Agregar servicio Redis en `docker-compose.yml`:
+
+```yaml
+redis:
+  image: redis:7-alpine
+  container_name: ams_redis
+  restart: unless-stopped
+  volumes:
+    - redis_data:/data
+  networks:
+    - ams_network
+```
+
+Actualizar `.env`:
+```bash
+REDIS_URL=redis://redis:6379/0
+```
+
+### 3. Configurar Límites de Recursos
+
+```yaml
+deploy:
+  resources:
+    limits:
+      cpus: '2'
+      memory: 2G
+    reservations:
+      memory: 512M
+```
 
 ---
 
-**Last Updated:** November 2025  
-**Version:** 2.0.0
+## 📝 Checklist de Deployment a Producción
+
+- [ ] Generar nuevo `SECRET_KEY`
+- [ ] Configurar `DEBUG=False`
+- [ ] Actualizar `ALLOWED_HOSTS` con dominio real
+- [ ] Configurar `CSRF_TRUSTED_ORIGINS`
+- [ ] Usar contraseñas seguras para PostgreSQL
+- [ ] Configurar backups automáticos
+- [ ] Configurar monitoreo (Sentry, etc.)
+- [ ] Revisar logs de producción
+- [ ] Configurar firewall
+- [ ] Probar health checks
+- [ ] Documentar credenciales de forma segura
+
+---
+
+## 🔗 Referencias
+
+- [Docker Documentation](https://docs.docker.com/)
+- [Django Deployment Checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/)
+- [Gunicorn Configuration](https://docs.gunicorn.org/en/stable/settings.html)
+
+---
+
+## 📞 Soporte
+
+Para problemas o preguntas, consultar:
+- Documentación del proyecto
+- Issues en GitHub
+- Logs de aplicación en `/app/logs/`

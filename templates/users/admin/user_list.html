@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Usuarios - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>
+        <i class="bi bi-people me-2"></i>
+        Usuarios
+      </h1>
+      <a href="{% url 'users:user-create' %}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Crear Usuario
+      </a>
+    </div>
+
+    <!-- Filter by role -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="get" class="row g-3">
+          <div class="col-auto">
+            <label class="form-label">Filtrar por rol:</label>
+          </div>
+          <div class="col-auto">
+            <select name="role" class="form-select" onchange="this.form.submit()">
+              <option value="">Todos</option>
+              {% for value, label in role_choices %}
+                <option value="{{ value }}" {% if value == current_filter %}selected{% endif %}>
+                  {{ label }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Users table -->
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Nombre Completo</th>
+                <th>Email</th>
+                <th>Rol</th>
+                <th>Activo</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+                <tr>
+                  <td>{{ user.username }}</td>
+                  <td>{{ user.first_name }} {{ user.last_name }}</td>
+                  <td>{{ user.email }}</td>
+                  <td>
+                    <span class="badge bg-primary">{{ user.get_role_display }}</span>
+                  </td>
+                  <td>
+                    {% if user.is_active %}
+                      <span class="badge bg-success">Sí</span>
+                    {% else %}
+                      <span class="badge bg-danger">No</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <a href="{% url 'users:user-edit' user.pk %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i>
+                      </a>
+                      <a href="{% url 'users:user-delete' user.pk %}" class="btn btn-outline-danger">
+                        <i class="bi bi-trash"></i>
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="6" class="text-center text-muted">
+                    No hay usuarios registrados.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+          <nav>
+            <ul class="pagination justify-content-center">
+              {% if page_obj.has_previous %}
+                <li class="page-item">
+                  <a class="page-link" href="?page=1{% if current_filter %}&role={{ current_filter }}{% endif %}">Primera</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_filter %}&role={{ current_filter }}{% endif %}">Anterior</a>
+                </li>
+              {% endif %}
+
+              <li class="page-item active">
+                <span class="page-link">
+                  Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                </span>
+              </li>
+
+              {% if page_obj.has_next %}
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_filter %}&role={{ current_filter }}{% endif %}">Siguiente</a>
+                </li>
+                <li class="page-item">
+                  <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if current_filter %}&role={{ current_filter }}{% endif %}">Última</a>
+                </li>
+              {% endif %}
+            </ul>
+          </nav>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

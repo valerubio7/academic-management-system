@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Asignar Profesores - {{ subject.name }} - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-8 mx-auto">
+    <div class="d-flex align-items-center mb-4">
+      <a href="{% url 'academics:subject-list' %}" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1>
+        <i class="bi bi-person-plus me-2"></i>
+        Asignar Profesores
+      </h1>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-book me-2"></i>{{ subject.name }}</h5>
+        <p class="text-muted mb-0">
+          <strong>Código:</strong> <code>{{ subject.code }}</code> |
+          <strong>Carrera:</strong> {{ subject.career.name }}
+        </p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Seleccionar Profesores</h5>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <div class="mb-3">
+            <p class="text-muted">Seleccione los profesores que dictarán esta materia:</p>
+            
+            {% if professors %}
+              <div class="list-group">
+                {% for professor in professors %}
+                  <label class="list-group-item">
+                    <input type="checkbox" name="professors" value="{{ professor.pk }}" 
+                           class="form-check-input me-2"
+                           {% if professor in assigned_professors %}checked{% endif %}>
+                    <strong>{{ professor.user.get_full_name }}</strong>
+                    <br>
+                    <small class="text-muted">{{ professor.user.email }} | Legajo: {{ professor.professor_id }}</small>
+                  </label>
+                {% endfor %}
+              </div>
+            {% else %}
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No hay profesores registrados en el sistema.
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'academics:subject-list' %}" class="btn btn-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i>Guardar Asignación
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

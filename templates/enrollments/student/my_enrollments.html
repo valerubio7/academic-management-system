@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Inscripciones - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1>
+        <i class="bi bi-list-check me-2"></i>
+        Mis Inscripciones
+      </h1>
+      <a href="{% url 'users:student-dashboard' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Volver al Dashboard
+      </a>
+    </div>
+
+    <!-- Student Info -->
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-4">
+            <strong>Estudiante:</strong> {{ student.user.get_full_name }}
+          </div>
+          <div class="col-md-4">
+            <strong>Legajo:</strong> {{ student.student_id }}
+          </div>
+          <div class="col-md-4">
+            <strong>Carrera:</strong> {{ student.career.name }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subject Inscriptions -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-book me-2"></i>Inscripciones a Materias</h5>
+      </div>
+      <div class="card-body">
+        {% if subject_inscriptions %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Materia</th>
+                  <th>Año</th>
+                  <th>Período</th>
+                  <th>Categoría</th>
+                  <th>Fecha de Inscripción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inscription in subject_inscriptions %}
+                  <tr>
+                    <td><code>{{ inscription.subject.code }}</code></td>
+                    <td>{{ inscription.subject.name }}</td>
+                    <td>{{ inscription.subject.year }}°</td>
+                    <td>{{ inscription.subject.get_period_display }}</td>
+                    <td>
+                      <span class="badge {% if inscription.subject.category == 'obligatory' %}bg-primary{% else %}bg-secondary{% endif %}">
+                        {{ inscription.subject.get_category_display }}
+                      </span>
+                    </td>
+                    <td>{{ inscription.inscription_date|date:"d/m/Y" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No tenés inscripciones a materias. 
+            <a href="{% url 'enrollments:available-subjects' %}" class="alert-link">Inscribite ahora</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Final Exam Inscriptions -->
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Inscripciones a Finales</h5>
+      </div>
+      <div class="card-body">
+        {% if final_inscriptions %}
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Materia</th>
+                  <th>Fecha del Final</th>
+                  <th>Ubicación</th>
+                  <th>Llamado</th>
+                  <th>Fecha de Inscripción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for inscription in final_inscriptions %}
+                  <tr>
+                    <td>
+                      <strong>{{ inscription.final_exam.subject.name }}</strong><br>
+                      <small class="text-muted">{{ inscription.final_exam.subject.code }}</small>
+                    </td>
+                    <td>{{ inscription.final_exam.date|date:"d/m/Y" }}</td>
+                    <td>{{ inscription.final_exam.location }}</td>
+                    <td><span class="badge bg-info">{{ inscription.final_exam.call_number }}°</span></td>
+                    <td>{{ inscription.inscription_date|date:"d/m/Y" }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            No tenés inscripciones a finales. 
+            <a href="{% url 'enrollments:available-finals' %}" class="alert-link">Ver finales disponibles</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

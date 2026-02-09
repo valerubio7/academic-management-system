@@ -1,45 +1,99 @@
 services:
-
+  # PostgreSQL Database
   db:
-    image: postgres:latest
-    restart: always
-    volumes: 
-      - db_data:/var/lib/postgresql/data
-    environment: 
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5432:5432"
-    networks:
-      - AMS_network
-
-  backend:
-    image: ams:dev
-    build:  .
-    command: python manage.py runserver 0.0.0.0:8000  # Override for development
-    volumes:
-      - .:/app  # only for development, not recommended for production
+    image: postgres:18.1
+    container_name: ams_db
+    restart: unless-stopped
     environment:
-      SECRET_KEY: ${SECRET_KEY}
-      DEBUG: ${DEBUG}
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT}
+      POSTGRES_DB: ${POSTGRES_DB:-AMSdatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=C"
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
-      - "8000:8000"
-    depends_on:
-      - db
+      - "5433:5432"  # External:Internal - Map to 5433 to avoid conflict with local PostgreSQL
     networks:
-      - AMS_network
+      - ams_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-AMSdatabase}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-networks:
-  AMS_network:
-    name: AMS_network
+  # Django Application
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        WORKERS: 4
+        TIMEOUT: 30
+        GRACEFUL_TIMEOUT: 10
+        KEEPALIVE: 5
+    container_name: ams_web
+    restart: unless-stopped
+    environment:
+      # Django Core
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG:-False}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      CSRF_TRUSTED_ORIGINS: ${CSRF_TRUSTED_ORIGINS}
+      
+      # Security
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-False}
+      
+      # Database
+      POSTGRES_DB: ${POSTGRES_DB:-AMSdatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      
+      # Email (optional)
+      EMAIL_BACKEND: ${EMAIL_BACKEND:-django.core.mail.backends.console.EmailBackend}
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-True}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-noreply@example.com}
+      
+      # Redis (optional, for future caching)
+      REDIS_URL: ${REDIS_URL:-}
+      
+      # Django settings module
+      DJANGO_SETTINGS_MODULE: config.settings
+    volumes:
+      # Persist media files (user uploads)
+      - media_files:/app/media
+      # Persist logs
+      - app_logs:/app/logs
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ams_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
 
 volumes:
-  db_data:
+  postgres_data:
     driver: local
+  media_files:
+    driver: local
+  app_logs:
+    driver: local
+
+
+networks:
+  ams_network:
+    driver: bridge

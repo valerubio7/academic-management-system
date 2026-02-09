@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Nota - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-lg-6 mx-auto">
+    <div class="d-flex align-items-center mb-4">
+      <a href="{% url 'grading:subject-grades' object.subject.code %}" class="btn btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+      <h1>
+        <i class="bi bi-pencil me-2"></i>
+        Editar Nota
+      </h1>
+    </div>
+
+    <!-- Student Info Card -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title">{{ object.student.user.get_full_name }}</h5>
+        <div class="row">
+          <div class="col-6">
+            <strong>Legajo:</strong> {{ object.student.student_id }}
+          </div>
+          <div class="col-6">
+            <strong>Email:</strong> {{ object.student.user.email }}
+          </div>
+        </div>
+        <div class="row mt-2">
+          <div class="col-12">
+            <strong>Materia:</strong> {{ object.subject.name }} ({{ object.subject.code }})
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grade Form -->
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">Calificación</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+              {{ form.non_field_errors }}
+            </div>
+          {% endif %}
+
+          <div class="mb-3">
+            <label for="{{ form.promotion_grade.id_for_label }}" class="form-label">Nota de Promoción</label>
+            <input type="number" name="{{ form.promotion_grade.name }}" 
+                   class="form-control {% if form.promotion_grade.errors %}is-invalid{% endif %}" 
+                   id="{{ form.promotion_grade.id_for_label }}" 
+                   value="{{ form.promotion_grade.value|default:'' }}" 
+                   min="0" max="10" step="0.01">
+            {% if form.promotion_grade.errors %}
+              <div class="invalid-feedback">{{ form.promotion_grade.errors.0 }}</div>
+            {% endif %}
+            <small class="text-muted">Valor entre 0 y 10 (opcional)</small>
+          </div>
+
+          <div class="mb-3">
+            <label for="{{ form.final_grade.id_for_label }}" class="form-label">Nota Final</label>
+            <input type="number" name="{{ form.final_grade.name }}" 
+                   class="form-control {% if form.final_grade.errors %}is-invalid{% endif %}" 
+                   id="{{ form.final_grade.id_for_label }}" 
+                   value="{{ form.final_grade.value|default:'' }}" 
+                   min="0" max="10" step="0.01">
+            {% if form.final_grade.errors %}
+              <div class="invalid-feedback">{{ form.final_grade.errors.0 }}</div>
+            {% endif %}
+            <small class="text-muted">Valor entre 0 y 10 (opcional)</small>
+          </div>
+
+          <!-- Current Status Display -->
+          {% if object.status %}
+            <div class="alert alert-info">
+              <strong>Estado actual:</strong> 
+              <span class="badge 
+                {% if object.status == 'promoted' %}bg-success
+                {% elif object.status == 'regular' %}bg-primary
+                {% elif object.status == 'free' %}bg-secondary
+                {% else %}bg-warning{% endif %}">
+                {{ object.get_status_display }}
+              </span>
+              <br>
+              <small class="text-muted">
+                El estado se actualiza automáticamente según la nota final:
+                <ul class="mb-0 mt-2">
+                  <li>7 o más: Promocionado</li>
+                  <li>4 a 6: Regular</li>
+                  <li>Menos de 4: Libre</li>
+                </ul>
+              </small>
+            </div>
+          {% endif %}
+
+          <div class="d-flex justify-content-end gap-2">
+            <a href="{% url 'grading:subject-grades' object.subject.code %}" class="btn btn-secondary">
+              Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i>Guardar Nota
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

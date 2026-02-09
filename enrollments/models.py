@@ -2,18 +2,6 @@ from django.db import models
 
 
 class FinalExam(models.Model):
-    """
-    Final exam call (session) for a Subject.
-
-    Attributes:
-        subject (Subject): Subject being examined (FK).
-        date (date): Exam date.
-        location (str): Where the exam takes place.
-        duration (timedelta): Expected duration.
-        call_number (int): Call identifier/ordinal within the period.
-        notes (str | None): Optional remarks for logistics or scope.
-    """
-
     subject = models.ForeignKey(
         "academics.Subject", on_delete=models.CASCADE, related_name="final_exams"
     )
@@ -28,18 +16,6 @@ class FinalExam(models.Model):
 
 
 class SubjectInscription(models.Model):
-    """
-    Enrollment record for a subject (course).
-
-    Attributes:
-        student (Student): Student who enrolls in the subject.
-        subject (Subject): Target subject of the enrollment.
-        inscription_date (date): Creation date; auto-populated.
-
-    Meta:
-        unique_together: Ensures a student cannot enroll in the same subject twice.
-    """
-
     student = models.ForeignKey(
         "users.Student", on_delete=models.CASCADE, related_name="subjects_inscriptions"
     )
@@ -50,10 +26,6 @@ class SubjectInscription(models.Model):
     )
     inscription_date = models.DateField(auto_now_add=True)
 
-    def __str__(self):
-        """Human-readable representation used in admin and logs."""
-        return f"{self.student.user.username} - {self.subject.name} ({self.inscription_date})"
-
     class Meta:
         unique_together = ("student", "subject")
         indexes = [
@@ -62,20 +34,11 @@ class SubjectInscription(models.Model):
             models.Index(fields=["inscription_date"]),
         ]
 
+    def __str__(self):
+        return f"{self.student.user.username} - {self.subject.name} ({self.inscription_date})"
+
 
 class FinalExamInscription(models.Model):
-    """
-    Enrollment record for a final exam session.
-
-    Attributes:
-        student (Student): Student who enrolls in the final exam.
-        final_exam (FinalExam): Final exam session being enrolled.
-        inscription_date (date): Creation date; auto-populated.
-
-    Meta:
-        unique_together: Ensures a student cannot enroll in the same final exam twice.
-    """
-
     student = models.ForeignKey(
         "users.Student",
         on_delete=models.CASCADE,
@@ -86,10 +49,6 @@ class FinalExamInscription(models.Model):
     )
     inscription_date = models.DateField(auto_now_add=True)
 
-    def __str__(self):
-        """Human-readable representation used in admin and logs."""
-        return f"{self.student.user.username} - {self.final_exam.subject.name} ({self.inscription_date})"
-
     class Meta:
         unique_together = ("student", "final_exam")
         indexes = [
@@ -97,3 +56,6 @@ class FinalExamInscription(models.Model):
             models.Index(fields=["final_exam"]),
             models.Index(fields=["inscription_date"]),
         ]
+
+    def __str__(self):
+        return f"{self.student.user.username} - {self.final_exam.subject.name} ({self.inscription_date})"

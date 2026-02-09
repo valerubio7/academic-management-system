@@ -1,107 +1,167 @@
-.PHONY: help migrate makemigrations collectstatic test shell logs clean build up down restart deploy check-env
+# Makefile para Academic Management System
+# Facilita operaciones comunes de desarrollo y producción
 
-# Default target
+.PHONY: help dev-up dev-down prod-up prod-down prod-build logs shell test migrate clean
+
+# Mostrar ayuda por defecto
 help:
-	@echo "Academic Management System - Available Commands:"
+	@echo "Academic Management System - Comandos Disponibles"
+	@echo "=================================================="
 	@echo ""
-	@echo "Development:"
-	@echo "  make up              - Start development environment"
-	@echo "  make down            - Stop development environment"
-	@echo "  make restart         - Restart development environment"
-	@echo "  make logs            - View application logs"
-	@echo "  make shell           - Open Django shell"
-	@echo "  make test            - Run test suite"
+	@echo "DESARROLLO:"
+	@echo "  make dev-up          - Iniciar servicios en modo desarrollo"
+	@echo "  make dev-down        - Detener servicios de desarrollo"
+	@echo "  make dev-logs        - Ver logs de desarrollo"
+	@echo "  make dev-shell       - Abrir shell en contenedor Django"
 	@echo ""
-	@echo "Database:"
-	@echo "  make migrate         - Apply database migrations"
-	@echo "  make makemigrations  - Create new migrations"
+	@echo "PRODUCCIÓN:"
+	@echo "  make prod-up         - Iniciar servicios en modo producción"
+	@echo "  make prod-down       - Detener servicios de producción"
+	@echo "  make prod-build      - Construir imágenes de producción"
+	@echo "  make prod-logs       - Ver logs de producción"
 	@echo ""
-	@echo "Static Files:"
-	@echo "  make collectstatic   - Collect static files for production"
+	@echo "UTILIDADES:"
+	@echo "  make test            - Ejecutar tests"
+	@echo "  make migrate         - Ejecutar migraciones de base de datos"
+	@echo "  make makemigrations  - Crear nuevas migraciones"
+	@echo "  make superuser       - Crear superusuario"
+	@echo "  make shell           - Abrir shell de Django"
+	@echo "  make clean           - Limpiar archivos temporales y caches"
+	@echo "  make backup-db       - Hacer backup de la base de datos"
+	@echo "  make restore-db      - Restaurar base de datos desde backup"
 	@echo ""
-	@echo "Production:"
-	@echo "  make build-prod      - Build production Docker image"
-	@echo "  make deploy-prod     - Deploy to production"
-	@echo "  make check-env       - Validate environment configuration"
-	@echo ""
-	@echo "Utilities:"
-	@echo "  make clean           - Clean temporary files and caches"
 
-# Development Environment
-up:
-	docker compose up -d
+# =================================================================
+# DESARROLLO
+# =================================================================
 
-down:
-	docker compose down
+dev-up:
+	@echo "Iniciando servicios en modo desarrollo..."
+	docker-compose up -d
+	@echo "✓ Servicios iniciados"
+	@echo "Django: http://localhost:8000"
 
-restart:
-	docker compose restart
+dev-down:
+	@echo "Deteniendo servicios de desarrollo..."
+	docker-compose down
+	@echo "✓ Servicios detenidos"
 
-logs:
-	docker compose logs -f backend
+dev-logs:
+	docker-compose logs -f web
 
-shell:
-	docker compose exec backend python manage.py shell
+dev-shell:
+	docker-compose exec web sh
 
-# Database Management
-migrate:
-	docker compose exec backend python manage.py migrate
+# =================================================================
+# PRODUCCIÓN
+# =================================================================
 
-makemigrations:
-	docker compose exec backend python manage.py makemigrations
+prod-up:
+	@echo "Iniciando servicios en modo producción..."
+	docker-compose up -d
+	@echo "✓ Servicios iniciados"
+	@echo "Aplicación: http://localhost:8000"
 
-# Static Files
-collectstatic:
-	docker compose exec backend python manage.py collectstatic --noinput
+prod-down:
+	@echo "Deteniendo servicios de producción..."
+	docker-compose down
+	@echo "✓ Servicios detenidos"
 
-# Testing
+prod-build:
+	@echo "Construyendo imágenes de producción..."
+	docker-compose build --no-cache
+	@echo "✓ Imágenes construidas"
+
+prod-logs:
+	docker-compose logs -f
+
+prod-restart:
+	@echo "Reiniciando servicios de producción..."
+	docker-compose restart
+	@echo "✓ Servicios reiniciados"
+
+# =================================================================
+# UTILIDADES
+# =================================================================
+
 test:
-	docker compose exec backend python manage.py test
+	@echo "Ejecutando tests..."
+	docker-compose exec web python -m pytest tests/ -v
 
 test-coverage:
-	docker compose exec backend coverage run --source='.' manage.py test
-	docker compose exec backend coverage report
-	docker compose exec backend coverage html
+	@echo "Ejecutando tests con coverage..."
+	docker-compose exec web python -m pytest tests/ --cov=. --cov-report=html --cov-report=term
 
-# Production Deployment
-build-prod:
-	docker compose -f docker-compose.prod.yml build
+migrate:
+	@echo "Ejecutando migraciones..."
+	docker-compose exec web python manage.py migrate
 
-deploy-prod: check-env
-	@echo "Deploying to production..."
-	docker compose -f docker-compose.prod.yml up -d
-	@echo "Running migrations..."
-	docker compose -f docker-compose.prod.yml exec backend python manage.py migrate --noinput
-	@echo "Collecting static files..."
-	docker compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
-	@echo "Production deployment completed!"
+makemigrations:
+	@echo "Creando migraciones..."
+	docker-compose exec web python manage.py makemigrations
 
-# Environment Validation
-check-env:
-	@echo "Checking environment configuration..."
-	@test -f .env || (echo "ERROR: .env file not found! Copy .env.example to .env" && exit 1)
-	@grep -q "change-me" .env && (echo "ERROR: Please update default values in .env file!" && exit 1) || true
-	@echo "Environment configuration OK"
+superuser:
+	@echo "Creando superusuario..."
+	docker-compose exec web python manage.py createsuperuser
 
-# Utilities
-clean:
-	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	find . -type f -name "*.pyo" -delete 2>/dev/null || true
-	find . -type f -name ".coverage" -delete 2>/dev/null || true
-	find . -type d -name "htmlcov" -exec rm -rf {} + 2>/dev/null || true
-	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-	@echo "Cleaned temporary files and caches"
+shell:
+	@echo "Abriendo shell de Django..."
+	docker-compose exec web python manage.py shell
 
-# Create superuser
-createsuperuser:
-	docker compose exec backend python manage.py createsuperuser
+collectstatic:
+	@echo "Recolectando archivos estáticos..."
+	docker-compose exec web python manage.py collectstatic --noinput
 
-# Database backup (development)
+# =================================================================
+# BASE DE DATOS
+# =================================================================
+
 backup-db:
-	docker compose exec db pg_dump -U $(shell grep POSTGRES_USER .env | cut -d '=' -f2) $(shell grep POSTGRES_DB .env | cut -d '=' -f2) > backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Database backup created"
+	@echo "Creando backup de base de datos..."
+	@mkdir -p backups
+	docker-compose exec -T db pg_dump -U $${POSTGRES_USER:-admin} $${POSTGRES_DB:-AMSdatabase} > backups/backup_$$(date +%Y%m%d_%H%M%S).sql
+	@echo "✓ Backup creado en backups/"
 
-# Health check
-health:
-	@curl -f http://localhost:8000/health/ || echo "Health check failed"
+restore-db:
+	@echo "Restaurando base de datos..."
+	@read -p "Archivo de backup: " BACKUP_FILE; \
+	docker-compose exec -T db psql -U $${POSTGRES_USER:-admin} $${POSTGRES_DB:-AMSdatabase} < $$BACKUP_FILE
+	@echo "✓ Base de datos restaurada"
+
+db-shell:
+	@echo "Abriendo shell de PostgreSQL..."
+	docker-compose exec db psql -U $${POSTGRES_USER:-admin} $${POSTGRES_DB:-AMSdatabase}
+
+# =================================================================
+# LIMPIEZA
+# =================================================================
+
+clean:
+	@echo "Limpiando archivos temporales..."
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete
+	find . -type f -name "*.pyo" -delete
+	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
+	rm -rf htmlcov/ .coverage 2>/dev/null || true
+	@echo "✓ Limpieza completada"
+
+clean-docker:
+	@echo "Limpiando contenedores y volúmenes..."
+	docker-compose down -v
+	docker system prune -f
+	@echo "✓ Docker limpiado"
+
+# =================================================================
+# INFORMACIÓN
+# =================================================================
+
+status:
+	@echo "Estado de los servicios:"
+	docker-compose ps
+
+logs-db:
+	docker-compose logs -f db
+
+logs-web:
+	docker-compose logs -f web

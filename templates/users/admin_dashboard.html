@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Panel Administrativo - AMS{% endblock %}
+
+{% block content %}
+<div class="row">
+  <div class="col-12">
+    <h1 class="mb-4">
+      <i class="bi bi-speedometer me-2"></i>
+      Panel Administrativo
+    </h1>
+
+    <div class="alert alert-success">
+      <p class="mb-0"><strong>Bienvenido, {{ user.first_name }} {{ user.last_name }}!</strong></p>
+      <p class="mb-0"><small>Gestione todos los recursos del sistema académico desde este panel.</small></p>
+    </div>
+
+    <div class="row mt-4">
+      <!-- Users -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-people me-2"></i>Usuarios
+            </h5>
+            <p class="card-text">Gestión de usuarios del sistema</p>
+            <a href="{% url 'users:user-list' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-list me-1"></i>Ver Lista
+            </a>
+            <a href="{% url 'users:user-create' %}" class="btn btn-success btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Crear
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Faculties -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-building me-2"></i>Facultades
+            </h5>
+            <p class="card-text">Gestión de facultades</p>
+            <a href="{% url 'academics:faculty-list' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-list me-1"></i>Ver Lista
+            </a>
+            <a href="{% url 'academics:faculty-create' %}" class="btn btn-success btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Crear
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Careers -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-mortarboard me-2"></i>Carreras
+            </h5>
+            <p class="card-text">Gestión de carreras</p>
+            <a href="{% url 'academics:career-list' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-list me-1"></i>Ver Lista
+            </a>
+            <a href="{% url 'academics:career-create' %}" class="btn btn-success btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Crear
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subjects -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-book me-2"></i>Materias
+            </h5>
+            <p class="card-text">Gestión de materias</p>
+            <a href="{% url 'academics:subject-list' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-list me-1"></i>Ver Lista
+            </a>
+            <a href="{% url 'academics:subject-create' %}" class="btn btn-success btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Crear
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Final Exams -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-file-earmark-text me-2"></i>Exámenes Finales
+            </h5>
+            <p class="card-text">Gestión de finales</p>
+            <a href="{% url 'enrollments:final-list' %}" class="btn btn-primary btn-sm">
+              <i class="bi bi-list me-1"></i>Ver Lista
+            </a>
+            <a href="{% url 'enrollments:final-create' %}" class="btn btn-success btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Crear
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Django Admin -->
+      <div class="col-md-4 mb-3">
+        <div class="card h-100 border-secondary">
+          <div class="card-body">
+            <h5 class="card-title">
+              <i class="bi bi-gear me-2"></i>Django Admin
+            </h5>
+            <p class="card-text">Panel de administración de Django</p>
+            <a href="/django-admin/" class="btn btn-secondary btn-sm">
+              <i class="bi bi-box-arrow-up-right me-1"></i>Ir a Django Admin
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

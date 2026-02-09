@@ -1,533 +1,367 @@
-from datetime import date, timedelta
-from unittest.mock import patch
-from tempfile import TemporaryDirectory
+"""Tests for users app."""
 
-from django.test import TestCase, override_settings
+from datetime import date
+
+import pytest
+from django.contrib.auth import get_user_model
 from django.urls import reverse
 
-from app.models import (
-    Career,
-    Faculty,
-    FinalExam,
-    Grade,
-    Subject,
-    FinalExamInscription,
-    SubjectInscription,
-    Administrator,
-    CustomUser,
-    Professor,
-    Student,
-)
+from exceptions import ServiceError
+from users.models import Administrator, Professor, Student
+from users.services import AssignmentService, UserService
+
+User = get_user_model()
+
+pytestmark = pytest.mark.django_db
 
 
-class CustomUserModelTest(TestCase):
+class TestCustomUserModel:
+    """Test CustomUser model."""
+
     def test_create_user(self):
-        user = CustomUser.objects.create_user(
+        """Test creating a custom user."""
+        user = User.objects.create_user(
             username="testuser",
-            password="testpass",
-            role=CustomUser.Role.STUDENT,
+            email="test@example.com",
+            password="testpass123",
             dni="12345678",
+            role=User.Role.STUDENT,
         )
-        self.assertEqual(user.username, "testuser")
-        self.assertEqual(user.role, CustomUser.Role.STUDENT)
-        self.assertEqual(user.dni, "12345678")
+        assert user.username == "testuser"
+        assert user.email == "test@example.com"
+        assert user.dni == "12345678"
+        assert user.role == User.Role.STUDENT
+        assert user.check_password("testpass123")
+
+    def test_user_str(self):
+        """Test user string representation."""
+        user = User.objects.create_user(
+            username="testuser",
+            first_name="John",
+            last_name="Doe",
+            dni="12345678",
+            role=User.Role.STUDENT,
+        )
+        assert str(user) == "John Doe"
+
+    def test_dni_unique(self):
+        """Test that DNI must be unique."""
+        User.objects.create_user(
+            username="user1", dni="12345678", role=User.Role.STUDENT
+        )
+        with pytest.raises(Exception):
+            User.objects.create_user(
+                username="user2", dni="12345678", role=User.Role.STUDENT
+            )
 
 
-class StudentModelTest(TestCase):
-    def setUp(self):
-        self.user = CustomUser.objects.create_user(
-            username="student1",
-            password="testpass",
-            role=CustomUser.Role.STUDENT,
-            dni="87654321",
-        )
-        self.faculty = Faculty.objects.create(
-            code="F1",
-            name="Facultad de Ingeniería",
-            dean="Decano Ejemplo",
-            established_date="1950-01-01",
-        )
-        self.career = Career.objects.create(
-            name="Ingeniería",
-            code="ING",
-            faculty_id="F1",
-            director="Director",
-            duration_years=5,
-        )
+class TestStudentModel:
+    """Test Student model."""
 
-    def test_create_student(self):
+    def test_create_student(self, career):
+        """Test creating a student."""
+        user = User.objects.create_user(
+            username="student", dni="11111111", role=User.Role.STUDENT
+        )
         student = Student.objects.create(
-            student_id="S1",
-            user=self.user,
-            career=self.career,
-            enrollment_date="2022-01-01",
+            student_id="STU00001",
+            user=user,
+            career=career,
+            enrollment_date=date.today(),
         )
-        self.assertEqual(student.user.username, "student1")
-        self.assertEqual(student.career.name, "Ingeniería")
+        assert student.student_id == "STU00001"
+        assert student.user == user
+        assert student.career == career
+
+    def test_student_str(self, student_user):
+        """Test student string representation."""
+        student = student_user.student
+        assert "Student ID" in str(student)
+        assert student.student_id in str(student)
 
 
-class ProfessorModelTest(TestCase):
-    def setUp(self):
-        self.user = CustomUser.objects.create_user(
-            username="prof1",
-            password="testpass",
-            role=CustomUser.Role.PROFESSOR,
-            dni="11223344",
-        )
+class TestProfessorModel:
+    """Test Professor model."""
 
     def test_create_professor(self):
+        """Test creating a professor."""
+        user = User.objects.create_user(
+            username="prof", dni="22222222", role=User.Role.PROFESSOR
+        )
         professor = Professor.objects.create(
-            professor_id="P1",
-            user=self.user,
+            professor_id="PROF00001",
+            user=user,
             degree="PhD",
-            hire_date="2020-01-01",
             category=Professor.Category.TITULAR,
+            hire_date=date.today(),
         )
-        self.assertEqual(professor.user.username, "prof1")
-        self.assertEqual(professor.category, Professor.Category.TITULAR)
+        assert professor.professor_id == "PROF00001"
+        assert professor.user == user
+        assert professor.degree == "PhD"
+        assert professor.category == Professor.Category.TITULAR
+
+    def test_professor_str(self, professor_user):
+        """Test professor string representation."""
+        professor = professor_user.professor
+        assert str(professor) == professor_user.get_full_name()
 
 
-class AdministratorModelTest(TestCase):
-    def setUp(self):
-        self.user = CustomUser.objects.create_user(
-            username="admin1",
-            password="testpass",
-            role=CustomUser.Role.ADMIN,
-            dni="99887766",
-        )
+class TestAdministratorModel:
+    """Test Administrator model."""
 
     def test_create_administrator(self):
+        """Test creating an administrator."""
+        user = User.objects.create_user(
+            username="admin", dni="33333333", role=User.Role.ADMIN
+        )
         admin = Administrator.objects.create(
-            administrator_id="A1",
-            user=self.user,
-            position="Manager",
-            hire_date="2021-01-01",
+            administrator_id="ADM00001",
+            user=user,
+            position="Director",
+            hire_date=date.today(),
         )
-        self.assertEqual(admin.user.username, "admin1")
-        self.assertEqual(admin.position, "Manager")
+        assert admin.administrator_id == "ADM00001"
+        assert admin.user == user
+        assert admin.position == "Director"
 
 
-def make_admin(username="admin", dni="90000000"):
-    user = CustomUser.objects.create_user(
-        username=username,
-        password="pass1234",
-        role=CustomUser.Role.ADMIN,
-        dni=dni,
-    )
-    Administrator.objects.create(
-        administrator_id=f"A-{dni}",
-        user=user,
-        position="Mgr",
-        hire_date=date(2020, 1, 1),
-    )
-    return user
+class TestUserService:
+    """Test UserService."""
 
+    def test_create_student_minimal(self):
+        """Test creating a student with minimal data."""
+        user_data = {
+            "username": "newstudent",
+            "password": "testpass123",
+            "dni": "99999999",
+            "first_name": "New",
+            "last_name": "Student",
+        }
+        user = UserService.create_student(user_data)
 
-def make_faculty(code="F1"):
-    return Faculty.objects.create(
-        code=code,
-        name="Facultad de Ingeniería",
-        address="Calle 123",
-        phone="123456789",
-        email="facu@uni.edu",
-        website="https://facu.uni.edu",
-        dean="Decano",
-        established_date=date(1950, 1, 1),
-        description="desc",
-    )
+        assert user.role == User.Role.STUDENT
+        assert user.check_password("testpass123")
+        assert hasattr(user, "student")
+        assert user.student.student_id.startswith("STU")
+        assert user.student.enrollment_date == date.today()
 
+    def test_create_student_with_profile_data(self, career):
+        """Test creating a student with profile data."""
+        user_data = {
+            "username": "newstudent",
+            "password": "testpass123",
+            "dni": "99999999",
+        }
+        student_data = {
+            "career": career,
+            "enrollment_date": date(2023, 1, 1),
+        }
+        user = UserService.create_student(user_data, student_data)
 
-def make_career(code="ING", faculty=None):
-    faculty = faculty or make_faculty()
-    return Career.objects.create(
-        name="Ingeniería",
-        code=code,
-        faculty=faculty,
-        director="Director",
-        duration_years=5,
-    )
+        assert user.student.career == career
+        assert user.student.enrollment_date == date(2023, 1, 1)
 
+    def test_create_professor_minimal(self):
+        """Test creating a professor with minimal data."""
+        user_data = {
+            "username": "newprof",
+            "password": "testpass123",
+            "dni": "88888888",
+        }
+        user = UserService.create_professor(user_data)
 
-def make_subject(code="MAT101", career=None):
-    career = career or make_career()
-    return Subject.objects.create(
-        name="Matemática",
-        code=code,
-        career=career,
-        year=1,
-        category=Subject.Category.OBLIGATORY,
-        period=Subject.Period.FIRST,
-        semanal_hours=6,
-    )
+        assert user.role == User.Role.PROFESSOR
+        assert hasattr(user, "professor")
+        assert user.professor.professor_id.startswith("PROF")
+        assert user.professor.degree == "Sin especificar"
+        assert user.professor.category == Professor.Category.AUXILIAR
 
+    def test_create_professor_with_profile_data(self):
+        """Test creating a professor with profile data."""
+        user_data = {
+            "username": "newprof",
+            "password": "testpass123",
+            "dni": "88888888",
+        }
+        professor_data = {
+            "degree": "PhD",
+            "category": Professor.Category.TITULAR,
+        }
+        user = UserService.create_professor(user_data, professor_data)
 
-def make_student(username="stud", dni="10000001", career=None):
-    user = CustomUser.objects.create_user(
-        username=username,
-        password="pass1234",
-        role=CustomUser.Role.STUDENT,
-        dni=dni,
-    )
-    student = Student.objects.create(
-        student_id=f"S-{dni}",
-        user=user,
-        career=career or make_career(),
-        enrollment_date=date(2020, 1, 1),
-    )
-    return user, student
+        assert user.professor.degree == "PhD"
+        assert user.professor.category == Professor.Category.TITULAR
 
-
-def make_professor(username="prof", dni="10000002"):
-    user = CustomUser.objects.create_user(
-        username=username,
-        password="pass1234",
-        role=CustomUser.Role.PROFESSOR,
-        dni=dni,
-    )
-    prof = Professor.objects.create(
-        professor_id=f"P-{dni}",
-        user=user,
-        degree="Ing.",
-        hire_date=date(2019, 1, 1),
-        category=Professor.Category.TITULAR,
-    )
-    return user, prof
-
-
-class AdminViewsTests(TestCase):
-    def setUp(self):
-        self.admin = make_admin()
-
-    def test_admin_dashboard_requires_admin(self):
-        # Unauthenticated -> redirect to login
-        resp = self.client.get(reverse("app:admin-dashboard"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertIn("/login", resp["Location"])  # login redirect
-
-        # Authenticated admin -> OK
-        self.client.force_login(self.admin)
-        resp = self.client.get(reverse("app:admin-dashboard"))
-        self.assertEqual(resp.status_code, 200)
-
-    def test_user_list_visible_to_admin(self):
-        self.client.force_login(self.admin)
-        resp = self.client.get(reverse("app:user-list"))
-        self.assertEqual(resp.status_code, 200)
-
-    def test_user_create_admin_role(self):
-        self.client.force_login(self.admin)
-        payload = {
+    def test_create_administrator_minimal(self):
+        """Test creating an administrator with minimal data."""
+        user_data = {
             "username": "newadmin",
-            "first_name": "Ana",
-            "last_name": "Admin",
-            "email": "ana@example.com",
-            "dni": "80000000",
-            "role": CustomUser.Role.ADMIN,
-            "is_active": True,
-            "password1": "Passw0rd!",
-            "password2": "Passw0rd!",
-            # Admin profile
-            "administrator_id": "A-80000000",
-            "position": "Ops",
-            "hire_date": "2021-01-01",
+            "password": "testpass123",
+            "dni": "77777777",
         }
-        resp = self.client.post(reverse("app:user-create"), data=payload)
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(CustomUser.objects.filter(username="newadmin").exists())
-        created = CustomUser.objects.get(username="newadmin")
-        self.assertEqual(created.role, CustomUser.Role.ADMIN)
-        self.assertTrue(hasattr(created, "administrator"))
+        user = UserService.create_administrator(user_data)
 
-    def test_faculty_crud(self):
-        self.client.force_login(self.admin)
-        # Create
-        create_payload = {
-            "name": "Facultad X",
-            "code": "FX",
-            "address": "Dir 1",
-            "phone": "123",
-            "email": "fx@u.edu",
-            "website": "https://fx.u.edu",
-            "dean": "Decano X",
-            "established_date": "2000-01-01",
-            "description": "desc",
-        }
-        resp = self.client.post(reverse("app:faculty-create"), data=create_payload)
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(Faculty.objects.filter(code="FX").exists())
+        assert user.role == User.Role.ADMIN
+        assert hasattr(user, "administrator")
+        assert user.administrator.administrator_id.startswith("ADM")
+        assert user.administrator.position == "Administrador"
 
-        # Edit
-        edit_payload = create_payload | {"name": "Facultad X Edit"}
-        resp = self.client.post(
-            reverse("app:faculty-edit", args=["FX"]), data=edit_payload
+    def test_create_user_profile_for_student(self):
+        """Test creating profile for existing student user."""
+        user = User.objects.create_user(
+            username="student", dni="66666666", role=User.Role.STUDENT
         )
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(Faculty.objects.get(code="FX").name, "Facultad X Edit")
+        profile = UserService.create_user_profile(user)
 
-        # Delete
-        resp = self.client.post(reverse("app:faculty-delete", args=["FX"]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(Faculty.objects.filter(code="FX").exists())
+        assert isinstance(profile, Student)
+        assert profile.student_id == f"STU{user.id:05d}"
+        assert profile.enrollment_date == date.today()
 
-    def test_career_crud(self):
-        self.client.force_login(self.admin)
-        fac = make_faculty("FZ")
-        # Create
-        create_payload = {
-            "name": "Carrera Y",
-            "code": "CY",
-            "faculty": fac.code,
-            "director": "Dir Y",
-            "duration_years": 4,
-            "description": "desc",
-        }
-        resp = self.client.post(reverse("app:career-create"), data=create_payload)
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(Career.objects.filter(code="CY").exists())
-
-        # Edit
-        edit_payload = create_payload | {"name": "Carrera Y Edit"}
-        resp = self.client.post(
-            reverse("app:career-edit", args=["CY"]), data=edit_payload
+    def test_create_user_profile_for_professor(self):
+        """Test creating profile for existing professor user."""
+        user = User.objects.create_user(
+            username="prof", dni="55555555", role=User.Role.PROFESSOR
         )
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(Career.objects.get(code="CY").name, "Carrera Y Edit")
+        profile = UserService.create_user_profile(user)
 
-        # Delete
-        resp = self.client.post(reverse("app:career-delete", args=["CY"]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(Career.objects.filter(code="CY").exists())
+        assert isinstance(profile, Professor)
+        assert profile.professor_id == f"PROF{user.id:05d}"
 
-    def test_subject_crud_and_assign_professors(self):
-        self.client.force_login(self.admin)
-        career = make_career("CI")
-        subj = make_subject("ALG1", career)
-        # Create new subject
-        payload = {
-            "name": "Álgebra",
-            "code": "ALG2",
-            "career": career.code,
-            "year": 1,
-            "category": Subject.Category.OBLIGATORY,
-            "period": Subject.Period.FIRST,
-            "semanal_hours": 6,
-            "description": "desc",
-        }
-        resp = self.client.post(reverse("app:subject-create"), data=payload)
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(Subject.objects.filter(code="ALG2").exists())
-
-        # Edit
-        payload_edit = payload | {"name": "Álgebra I"}
-        resp = self.client.post(
-            reverse("app:subject-edit", args=["ALG2"]), data=payload_edit
+    def test_create_user_profile_for_admin(self):
+        """Test creating profile for existing admin user."""
+        user = User.objects.create_user(
+            username="admin", dni="44444444", role=User.Role.ADMIN
         )
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(Subject.objects.get(code="ALG2").name, "Álgebra I")
+        profile = UserService.create_user_profile(user)
 
-        # Assign professors
-        prof_user, prof = make_professor("profX", "55555555")
-        resp = self.client.post(
-            reverse("app:assign-subject-professors", args=[subj.code]),
-            data={"professors": [str(prof.pk)]},
-        )
-        self.assertEqual(resp.status_code, 302)
-        subj.refresh_from_db()
-        self.assertIn(prof, subj.professors.all())
+        assert isinstance(profile, Administrator)
+        assert profile.administrator_id == f"ADM{user.id:05d}"
 
-        # Delete
-        resp = self.client.post(reverse("app:subject-delete", args=["ALG2"]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(Subject.objects.filter(code="ALG2").exists())
+    def test_update_user_with_profile(self, student_user, career):
+        """Test updating user and profile atomically."""
+        user_data = {"first_name": "Updated", "email": "updated@test.com"}
+        profile_data = {"career": career}
 
-    def test_final_crud_and_assign_professors(self):
-        self.client.force_login(self.admin)
-        subj = make_subject("MAT1")
-        # Create
-        payload = {
-            "subject": subj.code,
-            "date": (date.today() + timedelta(days=7)).isoformat(),
-            "location": "Aula 1",
-            "duration": "02:00:00",
-            "call_number": 1,
-            "notes": "1er llamado",
-        }
-        resp = self.client.post(reverse("app:final-create"), data=payload)
-        self.assertEqual(resp.status_code, 302)
-        final = FinalExam.objects.latest("id")
-
-        # Edit
-        payload_edit = payload | {"location": "Aula 2"}
-        resp = self.client.post(
-            reverse("app:final-edit", args=[final.id]), data=payload_edit
-        )
-        self.assertEqual(resp.status_code, 302)
-        final.refresh_from_db()
-        self.assertEqual(final.location, "Aula 2")
-
-        # Assign professors
-        _, prof = make_professor("profY", "66666666")
-        resp = self.client.post(
-            reverse("app:assign-final-professors", args=[final.id]),
-            data={"professors": [str(prof.pk)]},
-        )
-        self.assertEqual(resp.status_code, 302)
-        final.refresh_from_db()
-        self.assertIn(prof, final.professors.all())
-
-        # Delete
-        resp = self.client.post(reverse("app:final-delete", args=[final.id]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertFalse(FinalExam.objects.filter(id=final.id).exists())
-
-
-class StudentViewsTests(TestCase):
-    def setUp(self):
-        self.student_user, self.student = make_student()
-        self.subject = make_subject(career=self.student.career)
-
-    def test_student_dashboard_requires_profile(self):
-        # User without profile
-        user = CustomUser.objects.create_user(
-            username="no_profile",
-            password="pass1234",
-            role=CustomUser.Role.STUDENT,
-            dni="19999999",
-        )
-        self.client.force_login(user)
-        resp = self.client.get(reverse("app:student-dashboard"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("home"))
-
-    def test_subject_inscribe_flow(self):
-        self.client.force_login(self.student_user)
-        # GET confirm
-        resp = self.client.get(
-            reverse("app:subject-inscribe", args=[self.subject.code])
-        )
-        self.assertEqual(resp.status_code, 200)
-        # POST create inscription and grade
-        resp = self.client.post(
-            reverse("app:subject-inscribe", args=[self.subject.code])
-        )
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(
-            SubjectInscription.objects.filter(
-                student=self.student, subject=self.subject
-            ).exists()
-        )
-        self.assertTrue(
-            Grade.objects.filter(student=self.student, subject=self.subject).exists()
-        )
-        # Second POST idempotent
-        resp = self.client.post(
-            reverse("app:subject-inscribe", args=[self.subject.code])
-        )
-        self.assertEqual(resp.status_code, 302)
-
-    def test_final_exam_inscribe_requires_regular(self):
-        self.client.force_login(self.student_user)
-        final = FinalExam.objects.create(
-            subject=self.subject,
-            date=date.today() + timedelta(days=10),
-            location="Aula 1",
-            duration="02:00:00",
-            call_number=1,
-        )
-        # No grade -> error message and redirect
-        resp = self.client.get(reverse("app:final-inscribe", args=[final.id]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("app:student-dashboard"))
-
-        # Make regular and POST
-        Grade.objects.create(
-            student=self.student,
-            subject=self.subject,
-            status=Grade.StatusSubject.REGULAR,
-        )
-        resp = self.client.post(reverse("app:final-inscribe", args=[final.id]))
-        self.assertEqual(resp.status_code, 302)
-        self.assertTrue(
-            FinalExamInscription.objects.filter(
-                student=self.student, final_exam=final
-            ).exists()
+        updated_user = UserService.update_user_with_profile(
+            student_user, user_data, profile_data
         )
 
+        assert updated_user.first_name == "Updated"
+        assert updated_user.email == "updated@test.com"
+        assert updated_user.student.career == career
 
-class ProfessorViewsTests(TestCase):
-    def setUp(self):
-        self.prof_user, self.prof = make_professor()
-        self.student_user, self.student = make_student(dni="12223334")
-        self.subject = make_subject(career=self.student.career)
-        # Assign professor to subject
-        self.prof.subjects.add(self.subject)
+    def test_update_user_password(self, student_user):
+        """Test updating user password."""
+        user_data = {"password": "newpassword123"}
 
-    def test_professor_dashboard_requires_profile(self):
-        user = CustomUser.objects.create_user(
-            username="no_prof_profile",
-            password="pass1234",
-            role=CustomUser.Role.PROFESSOR,
-            dni="18888888",
+        updated_user = UserService.update_user_with_profile(student_user, user_data)
+
+        assert updated_user.check_password("newpassword123")
+
+    def test_update_user_empty_password_ignored(self, student_user):
+        """Test that empty password is ignored."""
+        old_password = student_user.password
+        user_data = {"password": ""}
+
+        updated_user = UserService.update_user_with_profile(student_user, user_data)
+
+        assert updated_user.password == old_password
+
+
+class TestAssignmentService:
+    """Test AssignmentService."""
+
+    def test_update_subject_professor_assignments_add(self, subject, professor):
+        """Test adding professor to subject."""
+        result = AssignmentService.update_subject_professor_assignments(
+            subject, [professor.professor_id]
         )
-        self.client.force_login(user)
-        resp = self.client.get(reverse("app:professor-dashboard"))
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("home"))
 
-    def test_grade_list_creates_missing_grades(self):
-        SubjectInscription.objects.create(student=self.student, subject=self.subject)
-        self.client.force_login(self.prof_user)
-        resp = self.client.get(reverse("app:grade-list", args=[self.subject.code]))
-        self.assertEqual(resp.status_code, 200)
-        # Grade should be auto-created
-        self.assertTrue(
-            Grade.objects.filter(student=self.student, subject=self.subject).exists()
+        assert result["success"] is True
+        assert result["changes_made"] is True
+        assert professor in subject.professors.all()
+
+    def test_update_subject_professor_assignments_remove(self, subject, professor):
+        """Test removing professor from subject."""
+        subject.professors.add(professor)
+        result = AssignmentService.update_subject_professor_assignments(subject, [])
+
+        assert result["success"] is True
+        assert result["changes_made"] is True
+        assert professor not in subject.professors.all()
+
+    def test_update_subject_professor_assignments_no_change(self, subject, professor):
+        """Test no change when assignments are same."""
+        subject.professors.add(professor)
+        result = AssignmentService.update_subject_professor_assignments(
+            subject, [professor.professor_id]
         )
 
-    def test_grade_edit_permissions_and_update(self):
-        # Create grade and inscription
-        SubjectInscription.objects.create(student=self.student, subject=self.subject)
-        grade = Grade.objects.create(student=self.student, subject=self.subject)
-        # Another subject not assigned to professor
-        other_subject = make_subject("HIS1", self.student.career)
-        grade_other = Grade.objects.create(student=self.student, subject=other_subject)
+        assert result["success"] is True
+        assert result["changes_made"] is False
 
-        self.client.force_login(self.prof_user)
-        # Cannot edit not assigned
-        resp = self.client.post(
-            reverse("app:grade-edit", args=[grade_other.id]), data={"final_grade": 7}
+    def test_update_final_professor_assignments(self, final_exam, professor):
+        """Test updating final exam professor assignments."""
+        result = AssignmentService.update_final_professor_assignments(
+            final_exam, [professor.professor_id]
         )
-        self.assertEqual(resp.status_code, 302)
-        self.assertEqual(resp["Location"], reverse("app:professor-dashboard"))
 
-        # Can edit assigned and update_status auto-applies
-        resp = self.client.post(
-            reverse("app:grade-edit", args=[grade.id]),
-            data={
-                "promotion_grade": 8,
-                "final_grade": 7,
-                "status": Grade.StatusSubject.REGULAR,
-            },
-        )
-        self.assertEqual(resp.status_code, 302)
-        grade.refresh_from_db()
-        # Since status wasn't changed explicitly (remains REGULAR),
-        # update_status should set PROMOTED for final_grade >= 6
-        self.assertEqual(grade.status, Grade.StatusSubject.PROMOTED)
+        assert result["success"] is True
+        assert result["changes_made"] is True
+        assert professor in final_exam.professors.all()
 
-    def test_professor_final_inscriptions_list(self):
-        final = FinalExam.objects.create(
-            subject=self.subject,
-            date=date.today() + timedelta(days=7),
-            location="Aula 1",
-            duration="02:00:00",
-            call_number=1,
+
+class TestUserViews:
+    """Test user views."""
+
+    def test_login_view_get(self, client):
+        """Test login view GET request."""
+        response = client.get(reverse("users:login"))
+        assert response.status_code == 200
+
+    def test_login_view_post_success(self, client, student_user):
+        """Test successful login."""
+        response = client.post(
+            reverse("users:login"),
+            {"username": "student_test", "password": "testpass123"},
         )
-        # Assign professor to final and create one inscription
-        self.prof.final_exams.add(final)
-        FinalExamInscription.objects.create(student=self.student, final_exam=final)
-        self.client.force_login(self.prof_user)
-        resp = self.client.get(
-            reverse("app:professor-final-inscriptions", args=[final.id])
+        assert response.status_code == 302  # Redirect after login
+
+    def test_login_view_post_failure(self, client):
+        """Test failed login."""
+        response = client.post(
+            reverse("users:login"),
+            {"username": "invalid", "password": "wrong"},
         )
-        self.assertEqual(resp.status_code, 200)
+        assert response.status_code == 200  # Stay on page
+        assert "form" in response.context
+
+    def test_admin_dashboard_requires_login(self, client):
+        """Test admin dashboard requires authentication."""
+        response = client.get(reverse("users:admin-dashboard"))
+        assert response.status_code == 302  # Redirect to login
+
+    def test_admin_dashboard_requires_admin_role(self, client, student_user):
+        """Test admin dashboard requires admin role."""
+        client.force_login(student_user)
+        response = client.get(reverse("users:admin-dashboard"))
+        assert response.status_code == 403  # Permission denied
+
+    def test_user_list_requires_admin(self, client, student_user):
+        """Test user list requires admin."""
+        client.force_login(student_user)
+        response = client.get(reverse("users:user-list"))
+        assert response.status_code == 403  # Permission denied
+
+    def test_user_list_success(self, client, admin_user):
+        """Test user list for admin."""
+        client.force_login(admin_user)
+        response = client.get(reverse("users:user-list"))
+        assert response.status_code == 200
+        assert "users" in response.context
+
+    def test_logout(self, client, student_user):
+        """Test logout."""
+        client.force_login(student_user)
+        response = client.get(reverse("users:logout"))
+        assert response.status_code == 302
