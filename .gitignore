@@ -146,7 +146,6 @@ pyvenv.cfg
 
 # uv package manager
 .venv/
-uv.lock
 .python-version.lock
 
 # Docker volumes and data
