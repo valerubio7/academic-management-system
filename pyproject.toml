@@ -25,7 +25,6 @@ dependencies = [
     "gunicorn>=21.2.0",
     "whitenoise>=6.6.0",
     "python-dotenv>=1.0.0",
-    "django-ratelimit>=4.1.0",
 ]
 
 [project.optional-dependencies]
@@ -34,30 +33,10 @@ dev = [
     "pytest>=8.0.0",
     "pytest-django>=4.7.0",
     "pytest-cov>=4.1.0",
-    "black>=24.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "django-stubs>=4.2.7",
     "ipython>=8.20.0",
-]
-
-# Dependencias opcionales de producción (descomentadas del requirements.txt)
-redis = [
-    "django-redis>=5.4.0",
-    "redis>=5.0.1",
-]
-
-monitoring = [
-    "sentry-sdk>=1.40.0",
-]
-
-media = [
-    "Pillow>=10.1.0",
-]
-
-# Todas las dependencias opcionales juntas
-all = [
-    "academic-management-system[dev,redis,monitoring,media]",
 ]
 
 [project.urls]
@@ -78,34 +57,20 @@ packages = ["config", "users", "academics", "enrollments", "grading"]
 
 [tool.uv]
 # Configuración específica de uv
-dev-dependencies = [
+
+[tool.uv.sources]
+# Puedes especificar fuentes personalizadas aquí si es necesario
+
+[dependency-groups]
+dev = [
     "pytest>=8.0.0",
     "pytest-django>=4.7.0",
     "pytest-cov>=4.1.0",
-    "black>=24.0.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
     "django-stubs>=4.2.7",
     "ipython>=8.20.0",
 ]
-
-[tool.uv.sources]
-# Puedes especificar fuentes personalizadas aquí si es necesario
-
-[tool.black]
-line-length = 88
-target-version = ['py314']
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-  | \.tox
-  | build
-  | dist
-  | migrations
-)/
-'''
 
 [tool.ruff]
 line-length = 88
@@ -130,7 +95,7 @@ select = [
     "UP",  # pyupgrade
 ]
 ignore = [
-    "E501",  # line too long (handled by black)
+    "E501",  # line too long (handled by ruff format)
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
 ]
@@ -138,6 +103,11 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "*/migrations/*.py" = ["E501", "F401", "F811"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"
@@ -149,6 +119,9 @@ addopts = [
     "--cov-report=html",
     "--cov-report=term-missing",
     "-v",
+]
+filterwarnings = [
+    "ignore::UserWarning:django.core.handlers.base",
 ]
 
 [tool.mypy]

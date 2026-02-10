@@ -114,11 +114,11 @@ else:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql_psycopg2",
-            "NAME": os.getenv("POSTGRES_DB"),
-            "USER": os.getenv("POSTGRES_USER"),
-            "PASSWORD": os.getenv("POSTGRES_PASSWORD"),
-            "HOST": os.getenv("DATABASE_HOST", "localhost"),
-            "PORT": os.getenv("DATABASE_PORT", "5432"),
+            "NAME": os.getenv("PGDATABASE", os.getenv("POSTGRES_DB")),
+            "USER": os.getenv("PGUSER", os.getenv("POSTGRES_USER")),
+            "PASSWORD": os.getenv("PGPASSWORD", os.getenv("POSTGRES_PASSWORD")),
+            "HOST": os.getenv("PGHOST", os.getenv("DATABASE_HOST", "localhost")),
+            "PORT": os.getenv("PGPORT", os.getenv("DATABASE_PORT", "5432")),
             "CONN_MAX_AGE": 600,
             "OPTIONS": {"connect_timeout": 10},
         }
@@ -129,7 +129,7 @@ else:
 # =================================================================
 
 AUTH_USER_MODEL = "users.CustomUser"
-LOGIN_URL = "app:login"
+LOGIN_URL = "login"
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -150,18 +150,14 @@ USE_I18N = True
 USE_TZ = True
 
 # =================================================================
-# STATIC & MEDIA FILES
+# STATIC FILES
 # =================================================================
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
-
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {
         "BACKEND": (
             "django.contrib.staticfiles.storage.StaticFilesStorage"
@@ -228,15 +224,7 @@ SERVER_EMAIL = DEFAULT_FROM_EMAIL
 # CACHE CONFIGURATION
 # =================================================================
 
-if os.getenv("REDIS_URL"):
-    CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.redis.RedisCache",
-            "LOCATION": os.getenv("REDIS_URL"),
-            "OPTIONS": {"CLIENT_CLASS": "django.core.cache.backends.redis.RedisClient"},
-        }
-    }
-elif DEBUG:
+if DEBUG:
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.locmem.LocMemCache",

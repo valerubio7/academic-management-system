@@ -4,6 +4,8 @@ from academics.models import Career, Faculty, Subject
 
 
 class FacultyForm(forms.ModelForm):
+    website = forms.URLField(required=False, label="Sitio Web", assume_scheme="https")
+
     class Meta:
         model = Faculty
         fields = [
@@ -23,7 +25,6 @@ class FacultyForm(forms.ModelForm):
             "address": "Dirección",
             "phone": "Teléfono",
             "email": "Email",
-            "website": "Sitio Web",
             "dean": "Decano",
             "established_date": "Fecha de Fundación",
             "description": "Descripción",
