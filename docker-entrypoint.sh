@@ -8,9 +8,18 @@ DB_USER="${PGUSER:-${POSTGRES_USER}}"
 DB_PASS="${PGPASSWORD:-${POSTGRES_PASSWORD}}"
 DB_NAME="${PGDATABASE:-${POSTGRES_DB}}"
 
+echo "==> Database config: host=${DB_HOST} port=${DB_PORT} user=${DB_USER} dbname=${DB_NAME}"
+
 echo "==> Waiting for PostgreSQL to be ready..."
-until python -c "import psycopg2; psycopg2.connect(host='${DB_HOST}', port='${DB_PORT}', user='${DB_USER}', password='${DB_PASS}', dbname='${DB_NAME}')" 2>/dev/null; do
-  echo "PostgreSQL is unavailable - sleeping"
+RETRIES=0
+MAX_RETRIES=15
+until python -c "import psycopg2; psycopg2.connect(host='${DB_HOST}', port='${DB_PORT}', user='${DB_USER}', password='${DB_PASS}', dbname='${DB_NAME}')" 2>&1; do
+  RETRIES=$((RETRIES + 1))
+  if [ "$RETRIES" -ge "$MAX_RETRIES" ]; then
+    echo "==> ERROR: Could not connect to PostgreSQL after ${MAX_RETRIES} attempts. Exiting."
+    exit 1
+  fi
+  echo "PostgreSQL is unavailable (attempt ${RETRIES}/${MAX_RETRIES}) - sleeping 2s"
   sleep 2
 done
 
