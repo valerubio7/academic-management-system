@@ -39,10 +39,8 @@ RUN apk add --no-cache \
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser:appuser /app
 
 # Install dependencies (cacheable layer)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-project --no-dev
+COPY uv.lock pyproject.toml /app/
+RUN uv sync --frozen --no-install-project --no-dev
 
 # Remove build dependencies
 RUN apk del .build-deps
