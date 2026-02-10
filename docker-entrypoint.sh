@@ -1,8 +1,15 @@
 #!/bin/sh
 set -e
 
+# Resolve database connection variables (Railway PG* || Docker Compose vars)
+DB_HOST="${PGHOST:-${DATABASE_HOST}}"
+DB_PORT="${PGPORT:-${DATABASE_PORT:-5432}}"
+DB_USER="${PGUSER:-${POSTGRES_USER}}"
+DB_PASS="${PGPASSWORD:-${POSTGRES_PASSWORD}}"
+DB_NAME="${PGDATABASE:-${POSTGRES_DB}}"
+
 echo "==> Waiting for PostgreSQL to be ready..."
-until python -c "import psycopg2; psycopg2.connect(host='${DATABASE_HOST}', port='${DATABASE_PORT}', user='${POSTGRES_USER}', password='${POSTGRES_PASSWORD}', dbname='${POSTGRES_DB}')" 2>/dev/null; do
+until python -c "import psycopg2; psycopg2.connect(host='${DB_HOST}', port='${DB_PORT}', user='${DB_USER}', password='${DB_PASS}', dbname='${DB_NAME}')" 2>/dev/null; do
   echo "PostgreSQL is unavailable - sleeping"
   sleep 2
 done

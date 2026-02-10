@@ -77,21 +77,19 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ || exit 1
-
 # Use dumb-init to handle signals properly and run migrations before starting
 ENTRYPOINT ["/usr/bin/dumb-init", "--", "/app/docker-entrypoint.sh"]
 
 # Run with Gunicorn for production
-CMD ["/app/.venv/bin/gunicorn", "config.wsgi:application", \
-    "--bind", "0.0.0.0:8000", \
-    "--workers", "4", \
-    "--timeout", "30", \
-    "--access-logfile", "-", \
-    "--error-logfile", "-", \
-    "--log-level", "info", \
-    "--limit-request-line", "4094", \
-    "--limit-request-fields", "100", \
-    "--limit-request-field_size", "8190"]
+# Shell form is required so $PORT is interpolated at runtime (Railway injects PORT dynamically)
+# Default 8000 is used when PORT is not set (e.g., Docker Compose)
+CMD /app/.venv/bin/gunicorn config.wsgi:application \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --workers 4 \
+    --timeout 30 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    --limit-request-line 4094 \
+    --limit-request-fields 100 \
+    --limit-request-field_size 8190
