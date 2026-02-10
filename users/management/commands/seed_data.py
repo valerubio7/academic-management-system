@@ -30,6 +30,15 @@ class Command(BaseCommand):
         if options["flush"]:
             self._flush()
 
+        # Idempotency check: skip if data already exists (safe for repeated deploys)
+        if Faculty.objects.exists() and not options["flush"]:
+            self.stdout.write(
+                self.style.WARNING(
+                    "==> Seed data already exists. Skipping. Use --flush to re-seed."
+                )
+            )
+            return
+
         self.stdout.write("\n=== Seeding database ===\n")
 
         faculties = self._create_faculties()

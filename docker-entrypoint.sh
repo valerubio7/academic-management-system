@@ -56,6 +56,9 @@ if not User.objects.filter(username='admin').exists():
 else:
     print('Superuser already exists')
 EOF
+
+  echo "==> Seeding database with demo data..."
+  python manage.py seed_data || echo "==> WARNING: Seed data failed"
 else
   echo "==> Skipping migrations and superuser creation (DB not available)"
 fi
