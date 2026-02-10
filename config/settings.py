@@ -2,6 +2,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
@@ -49,10 +50,9 @@ DEBUG = get_env_bool("DEBUG", "False")
 
 ALLOWED_HOSTS = get_env_list("ALLOWED_HOSTS")
 if not DEBUG and not ALLOWED_HOSTS:
-    raise ImproperlyConfigured(
-        "ALLOWED_HOSTS must be set in production (DEBUG=False). "
-        "Set the ALLOWED_HOSTS environment variable with your domain(s)."
-    )
+    # Default to wildcard so Railway healthcheck can reach the app.
+    # Set ALLOWED_HOSTS explicitly in production for tighter security.
+    ALLOWED_HOSTS = ["*"]
 if DEBUG and not ALLOWED_HOSTS:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
@@ -111,18 +111,35 @@ if DEBUG:
         }
     }
 else:
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql_psycopg2",
-            "NAME": os.getenv("PGDATABASE", os.getenv("POSTGRES_DB")),
-            "USER": os.getenv("PGUSER", os.getenv("POSTGRES_USER")),
-            "PASSWORD": os.getenv("PGPASSWORD", os.getenv("POSTGRES_PASSWORD")),
-            "HOST": os.getenv("PGHOST", os.getenv("DATABASE_HOST", "localhost")),
-            "PORT": os.getenv("PGPORT", os.getenv("DATABASE_PORT", "5432")),
-            "CONN_MAX_AGE": 600,
-            "OPTIONS": {"connect_timeout": 10},
+    # Production: prefer DATABASE_URL (Railway standard), fall back to individual vars
+    _database_url = os.getenv("DATABASE_URL")
+    if _database_url:
+        _parsed = urlparse(_database_url)
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql_psycopg2",
+                "NAME": _parsed.path.lstrip("/"),
+                "USER": _parsed.username or "",
+                "PASSWORD": _parsed.password or "",
+                "HOST": _parsed.hostname or "localhost",
+                "PORT": str(_parsed.port or 5432),
+                "CONN_MAX_AGE": 600,
+                "OPTIONS": {"connect_timeout": 10},
+            }
         }
-    }
+    else:
+        DATABASES = {
+            "default": {
+                "ENGINE": "django.db.backends.postgresql_psycopg2",
+                "NAME": os.getenv("PGDATABASE", os.getenv("POSTGRES_DB")),
+                "USER": os.getenv("PGUSER", os.getenv("POSTGRES_USER")),
+                "PASSWORD": os.getenv("PGPASSWORD", os.getenv("POSTGRES_PASSWORD")),
+                "HOST": os.getenv("PGHOST", os.getenv("DATABASE_HOST", "localhost")),
+                "PORT": os.getenv("PGPORT", os.getenv("DATABASE_PORT", "5432")),
+                "CONN_MAX_AGE": 600,
+                "OPTIONS": {"connect_timeout": 10},
+            }
+        }
 
 # =================================================================
 # AUTHENTICATION
@@ -174,16 +191,21 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # =================================================================
 
 if not DEBUG:
-    # SSL/HTTPS settings - can be disabled via environment variable
+    # Railway (and most PaaS) terminates TLS at the edge proxy and forwards
+    # X-Forwarded-Proto. Django needs this to recognize HTTPS requests for
+    # CSRF validation, request.is_secure(), secure cookies, etc.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+    # SSL redirect — disabled by default since Railway/reverse proxies handle this.
+    # Enable only if Django should enforce the redirect itself.
     SECURE_SSL_REDIRECT = os.getenv("SECURE_SSL_REDIRECT", "False") == "True"
-    SECURE_PROXY_SSL_HEADER = (
-        ("HTTP_X_FORWARDED_PROTO", "https") if SECURE_SSL_REDIRECT else None
-    )
     SECURE_HSTS_SECONDS = 31536000 if SECURE_SSL_REDIRECT else 0
     SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_SSL_REDIRECT
     SECURE_HSTS_PRELOAD = SECURE_SSL_REDIRECT
-    SESSION_COOKIE_SECURE = SECURE_SSL_REDIRECT
-    CSRF_COOKIE_SECURE = SECURE_SSL_REDIRECT
+
+    # Secure cookies — always on in production since the proxy provides HTTPS
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
     CSRF_COOKIE_HTTPONLY = True
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
