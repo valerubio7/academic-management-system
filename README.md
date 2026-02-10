@@ -16,7 +16,6 @@ Sistema de gestion academica desarrollado con Django, orientado al modelo univer
 - [Datos de Prueba](#datos-de-prueba)
 - [Testing](#testing)
 - [Estructura del Proyecto](#estructura-del-proyecto)
-- [Despliegue en Railway](#despliegue-en-railway)
 - [Licencia](#licencia)
 
 ## Tecnologias
@@ -302,16 +301,12 @@ Copiar `.env.example` a `.env` y ajustar los valores.
 | `SECRET_KEY` | Clave secreta de Django (obligatoria en produccion) | `change-me-...` |
 | `DEBUG` | Modo debug (`True` = SQLite, `False` = PostgreSQL) | `True` |
 | `ALLOWED_HOSTS` | Hosts permitidos (separados por coma) | `localhost,127.0.0.1` |
+| `DATABASE_URL` | URL de conexion a PostgreSQL (formato `postgres://user:pass@host:port/db`) | - |
 | `POSTGRES_DB` | Nombre de la base de datos PostgreSQL | `AMSdatabase` |
 | `POSTGRES_USER` | Usuario de PostgreSQL | `admin` |
 | `POSTGRES_PASSWORD` | Contrasena de PostgreSQL | `admin` |
 | `DATABASE_HOST` | Host de la base de datos (`db` para Docker) | `db` |
 | `DATABASE_PORT` | Puerto de PostgreSQL | `5432` |
-| `PGDATABASE` | Nombre de la BD (Railway, sobreescribe `POSTGRES_DB`) | - |
-| `PGUSER` | Usuario de la BD (Railway, sobreescribe `POSTGRES_USER`) | - |
-| `PGPASSWORD` | Contrasena de la BD (Railway, sobreescribe `POSTGRES_PASSWORD`) | - |
-| `PGHOST` | Host de la BD (Railway, sobreescribe `DATABASE_HOST`) | - |
-| `PGPORT` | Puerto de la BD (Railway, sobreescribe `DATABASE_PORT`) | - |
 | `CSRF_TRUSTED_ORIGINS` | Origenes confiables para CSRF (produccion) | `` |
 | `EMAIL_HOST` | Servidor SMTP | `smtp.gmail.com` |
 | `EMAIL_PORT` | Puerto SMTP | `587` |
@@ -436,41 +431,10 @@ academic-management-system/
 ├── Dockerfile                      # Imagen Docker (Alpine + Gunicorn)
 ├── docker-compose.yml              # PostgreSQL + Django
 ├── docker-entrypoint.sh            # Script de inicio del contenedor
-├── railway.toml                    # Configuracion de despliegue en Railway
 ├── pyproject.toml                  # Dependencias y configuracion de herramientas
 ├── .env.example                    # Template de variables de entorno
 └── manage.py                       # Entry point de Django
 ```
-
-## Despliegue en Railway
-
-El proyecto esta preparado para despliegue en [Railway](https://railway.app/) usando el Dockerfile existente.
-
-### Pasos
-
-1. **Crear proyecto en Railway**: Desde el dashboard de Railway, crear un nuevo proyecto.
-
-2. **Agregar servicio PostgreSQL**: Agregar un servicio de PostgreSQL al proyecto. Railway asigna automaticamente las variables `PGDATABASE`, `PGUSER`, `PGPASSWORD`, `PGHOST` y `PGPORT`.
-
-3. **Conectar repositorio GitHub**: Agregar un nuevo servicio desde el repositorio de GitHub. Railway detecta el `Dockerfile` automaticamente via `railway.toml`.
-
-4. **Configurar variables de entorno**: En el servicio web, agregar las siguientes variables:
-
-   | Variable | Valor |
-   |---|---|
-   | `SECRET_KEY` | Una clave secreta unica (generar con `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`) |
-   | `DEBUG` | `False` |
-   | `ALLOWED_HOSTS` | `healthcheck.railway.app,.railway.app` |
-   | `CSRF_TRUSTED_ORIGINS` | `https://<tu-dominio>.railway.app` |
-   | `PGDATABASE` | `${{Postgres.PGDATABASE}}` |
-   | `PGUSER` | `${{Postgres.PGUSER}}` |
-   | `PGPASSWORD` | `${{Postgres.PGPASSWORD}}` |
-   | `PGHOST` | `${{Postgres.PGHOST}}` |
-   | `PGPORT` | `${{Postgres.PGPORT}}` |
-
-5. **Generar dominio publico**: En Settings > Networking del servicio web, generar un dominio publico. Actualizar `CSRF_TRUSTED_ORIGINS` con el dominio asignado.
-
-Railway ejecuta automaticamente las migraciones y `collectstatic` a traves del `docker-entrypoint.sh`. El health check se configura via `railway.toml` apuntando a `/health/`.
 
 ## Licencia
 
