@@ -2,6 +2,18 @@
 
 Sistema de gestion academica desarrollado con Django, orientado al modelo universitario argentino. Permite administrar facultades, carreras, materias, inscripciones a cursado y mesas de examen final, y calificaciones, con roles diferenciados para administradores, profesores y estudiantes.
 
+### Demo en vivo
+
+La aplicacion esta desplegada con datos de prueba precargados:
+
+https://academicmanagementsystem-production-5072.up.railway.app/
+
+| Rol | Usuario | Contrasena |
+|---|---|---|
+| Administrador | `admin1` | `password123` |
+| Profesor | `prof1` | `password123` |
+| Estudiante | `student1` | `password123` |
+
 ## Tabla de Contenidos
 
 - [Tecnologias](#tecnologias)
